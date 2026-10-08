@@ -1,293 +1,236 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brawl Draft Fast Tool</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Ajustes customizados rápidos para mobile */
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            -webkit-tap-highlight-color: transparent; /* Remove piscar azul ao tocar em botões no mobile */
-            overscroll-behavior-y: none; /* Evita o bounce scroll indesejado */
-        }
-        
-        /* Animação suave para exibir as recomendações */
-        .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Cores de borda para as funções dos brawlers nas recomendações */
-        .role-safe_first { border-bottom: 4px solid #10B981; } /* Emerald */
-        .role-mid { border-bottom: 4px solid #3B82F6; } /* Blue */
-        .role-last_pick { border-bottom: 4px solid #F59E0B; } /* Amber/Orange */
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brawl Draft Pro - Ao Vivo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #121826; color: #e2e8f0; }
+    .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col p-4 md:p-8 selection:bg-indigo-500">
+<body class="min-h-screen p-4 flex flex-col items-center">
 
-    <header class="mb-6 text-center">
-        <h1 class="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent mb-1">
-            Brawl Draft
-        </h1>
-        <p class="text-slate-400 text-sm">Decisão Rápida • Pick & Counter</p>
-    </header>
+  <!-- Header & API Status -->
+  <header class="w-full max-w-md flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-yellow-400">Brawl Draft</h1>
+    <div id="api-status" class="text-xs font-bold px-3 py-1 rounded-full bg-yellow-600 text-white animate-pulse">
+      🟡 Conectando BrawlAPI...
+    </div>
+  </header>
 
-    <main class="max-w-md mx-auto w-full flex-1 flex flex-col gap-6">
+  <main class="w-full max-w-md space-y-4">
+    
+    <!-- 1. Mapa ao Vivo -->
+    <div class="glass p-4 rounded-xl">
+      <label class="block text-sm font-bold mb-2 text-gray-300">1. Rotação Atual (Ao Vivo)</label>
+      <select id="map-select" class="w-full bg-slate-800 text-white p-3 rounded-lg border border-slate-600 focus:outline-none focus:border-yellow-400 font-semibold mb-2" onchange="fetchMapStats()">
+        <option value="">Carregando mapas...</option>
+      </select>
+      <div id="map-loading" class="text-xs text-blue-400 hidden mt-1">Carregando estatísticas do mapa selecionado...</div>
+    </div>
 
-        <section class="bg-slate-800 rounded-2xl p-4 shadow-lg border border-slate-700">
-            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span class="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
-                Sua Posição
-            </h2>
-            <div class="grid grid-cols-3 gap-2" id="position-container">
-                <button onclick="setTurn('first')" id="btn-turn-first" class="py-3 px-1 rounded-xl bg-indigo-600 text-white font-bold text-sm transition-all shadow-md active:scale-95">1º Pick</button>
-                <button onclick="setTurn('mid')" id="btn-turn-mid" class="py-3 px-1 rounded-xl bg-slate-700 text-slate-300 font-bold text-sm transition-all hover:bg-slate-600 active:scale-95">2º/3º Pick</button>
-                <button onclick="setTurn('last')" id="btn-turn-last" class="py-3 px-1 rounded-xl bg-slate-700 text-slate-300 font-bold text-sm transition-all hover:bg-slate-600 active:scale-95">Last Pick</button>
-            </div>
-            <p class="text-xs text-slate-400 mt-3 text-center" id="turn-description">Escolha os personagens mais seguros e versáteis.</p>
-        </section>
+    <!-- 2. Seu Turno -->
+    <div class="glass p-4 rounded-xl">
+      <label class="block text-sm font-bold mb-2 text-gray-300">2. Qual o seu pick?</label>
+      <div class="flex gap-2">
+        <button onclick="setTurn('first')" id="btn-first" class="flex-1 bg-blue-600 p-2 rounded-lg font-bold opacity-50 hover:opacity-100 transition">1º Pick</button>
+        <button onclick="setTurn('mid')" id="btn-mid" class="flex-1 bg-purple-600 p-2 rounded-lg font-bold opacity-50 hover:opacity-100 transition">2º/3º Pick</button>
+        <button onclick="setTurn('last')" id="btn-last" class="flex-1 bg-red-600 p-2 rounded-lg font-bold opacity-50 hover:opacity-100 transition">Last Pick</button>
+      </div>
+    </div>
 
-        <section id="enemy-section" class="bg-slate-800 rounded-2xl p-4 shadow-lg border border-slate-700 hidden opacity-0 transition-opacity duration-300">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                    <span class="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
-                    Pick Inimigo
-                </h2>
-                <span class="text-xs text-slate-400">Toque para selecionar</span>
-            </div>
-            <!-- Grid de Brawlers renderizado via JS -->
-            <div id="enemy-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto pr-1 pb-1">
-                <!-- Botões injetados aqui -->
-            </div>
-        </section>
+    <!-- 3. Pick Inimigo (Ativo apenas se não for First Pick) -->
+    <div class="glass p-4 rounded-xl" id="enemy-section" style="opacity: 0.5; pointer-events: none;">
+      <label class="block text-sm font-bold mb-2 text-gray-300">3. O que o inimigo pegou?</label>
+      <select id="enemy-select" class="w-full bg-slate-800 text-white p-3 rounded-lg border border-slate-600" onchange="updateRecommendations()">
+        <option value="">Selecione o brawler inimigo...</option>
+        <!-- Preenchido via JS -->
+      </select>
+    </div>
 
-        <section class="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 flex-1 flex flex-col">
-            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <span class="bg-emerald-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
-                Escolhas Recomendadas
-            </h2>
-            
-            <div id="recommendation-results" class="flex-1 flex flex-col gap-3">
-                <!-- Recomendações injetadas aqui -->
-                <div class="text-center text-slate-500 text-sm py-8 italic">
-                    Aguardando escolhas...
-                </div>
-            </div>
-        </section>
+    <!-- Resultados -->
+    <div class="mt-6">
+      <h2 class="text-xl font-bold mb-3 text-green-400 border-b border-green-800 pb-2">Melhores Escolhas:</h2>
+      <div id="results" class="space-y-3">
+        <p class="text-gray-400 text-sm text-center mt-4">Preencha os dados acima para ver as sugestões.</p>
+      </div>
+    </div>
 
-    </main>
+  </main>
 
-    <script>
-        // Cada brawler tem uma 'role' e uma lista de brawlers contra os quais ele é MUITO BOM (counters).
-        const brawlersDB = [
-            { name: "Belle", role: "safe_first", counters: ["Piper", "Brock", "Bea"], desc: "Tiro longo, segura" },
-            { name: "Meg", role: "safe_first", counters: ["Leon", "Crow", "Spike"], desc: "Tank sólido, pouco counter" },
-            { name: "Buster", role: "safe_first", counters: ["Piper", "Gene", "Mandy"], desc: "Escudo anula tiros de longe" },
-            { name: "Gene", role: "safe_first", counters: ["Max", "Sandy", "Tara"], desc: "Controle de área excelente" },
-            
-            { name: "Colette", role: "mid", counters: ["Frank", "Meg", "Buster", "Rosa"], desc: "Derrete Tanks (Anti-Tank)" },
-            { name: "Gale", role: "mid", counters: ["Mortis", "Edgar", "Mico", "Frank", "Rosa"], desc: "Anti-Assassinos e Tanks" },
-            { name: "Piper", role: "mid", counters: ["Brock", "Colt", "Bea", "Colette"], desc: "Sniper pura de altíssimo dano" },
-            { name: "Frank", role: "mid", counters: ["Mortis", "Poco", "Sandy"], desc: "Muita vida, controle de zona" },
-            { name: "Spike", role: "mid", counters: ["Rosa", "Bull", "Edgar"], desc: "Dano massivo de perto/médio" },
-            { name: "Crow", role: "mid", counters: ["Poco", "Byron", "Pam"], desc: "Anti-cura natural" },
-            
-            { name: "Mortis", role: "last_pick", counters: ["Dynamike", "Piper", "Tick", "Sprout", "Mandy"], desc: "Punição letal contra papeis" },
-            { name: "Dynamike", role: "last_pick", counters: ["Frank", "8-Bit", "Pam", "Rosa"], desc: "Dano absurdo por cima de muros" },
-            { name: "Edgar", role: "last_pick", counters: ["Dynamike", "Sprout", "Tick", "Piper"], desc: "Pulo letal se não houver stun" },
-            { name: "Tick", role: "last_pick", counters: ["Frank", "8-Bit", "Bea", "Piper"], desc: "Nega a passagem no mapa inteiro" }
-        ];
+  <script>
+    // --- ESTADO DO DRAFT ---
+    let state = {
+      mapId: null,
+      turn: null, // 'first', 'mid', 'last'
+      enemyPick: null,
+      mapTopBrawlers: [] // Dados reais da API para o mapa escolhido
+    };
 
-        const state = {
-            turn: 'first', // 'first', 'mid', 'last'
-            enemyPicks: [] // Array de strings (nomes)
+    // --- BASE DE DADOS COMPACTA (Regras e 5 Counters Reais) ---
+    // Mesmo no first pick, você precisa saber de quem esses brawlers apanham.
+    const brawlerKnowledge = {
+      "Belle": { role: "safe", counters: ["Piper", "Nani", "Mortis", "Edgar", "Mico"] },
+      "Piper": { role: "safe", counters: ["Nani", "Mortis", "Mico", "Meg", "Leon"] },
+      "Buster": { role: "safe", counters: ["Colette", "Gale", "Chester", "Lou", "Charlie"] },
+      "Meg": { role: "safe", counters: ["Colette", "Chester", "Gale", "Amber", "Clancy"] },
+      "Gene": { role: "safe", counters: ["Buster", "Fang", "Tara", "Sandy", "Max"] },
+      "Mortis": { role: "punish", counters: ["Shelly", "Bull", "Gale", "Surge", "Jacky"] },
+      "Edgar": { role: "punish", counters: ["Gale", "Surge", "Shelly", "Piper (com Gadget)", "Charlie"] },
+      "Dynamike": { role: "punish", counters: ["Mortis", "Mico", "Edgar", "Leon", "Max"] },
+      "Tick": { role: "punish", counters: ["Mortis", "Edgar", "Mico", "Lily", "Leon"] },
+      "Colette": { role: "mid", counters: ["Piper", "Nani", "Belle", "Spike", "Crow"] },
+      "Gale": { role: "mid", counters: ["Piper", "Belle", "Nani", "Mandy", "Grom"] }
+    };
+
+    // --- 1. BUSCAR DADOS AO VIVO (BrawlAPI) ---
+    async function initAPI() {
+      try {
+        const res = await fetch('https://api.brawlapi.com/v1/events');
+        const data = await res.json();
+        
+        const select = document.getElementById('map-select');
+        select.innerHTML = '<option value="">Selecione o mapa atual...</option>';
+        
+        // Pega apenas eventos ativos
+        data.active.forEach(event => {
+          const opt = document.createElement('option');
+          opt.value = event.map.id;
+          opt.text = `[${event.map.gameMode.name}] ${event.map.name}`;
+          select.appendChild(opt);
+        });
+
+        // Preenche o select de inimigos de forma genérica para exemplo
+        const enemySelect = document.getElementById('enemy-select');
+        Object.keys(brawlerKnowledge).sort().forEach(b => {
+          enemySelect.innerHTML += `<option value="${b}">${b}</option>`;
+        });
+
+        const status = document.getElementById('api-status');
+        status.innerText = '🟢 Ao Vivo (BrawlAPI)';
+        status.classList.replace('bg-yellow-600', 'bg-green-600');
+        status.classList.remove('animate-pulse');
+
+      } catch (error) {
+        document.getElementById('api-status').innerText = '🔴 Erro na API';
+        document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
+      }
+    }
+
+    // --- 2. BUSCAR ESTATÍSTICAS DO MAPA SELECIONADO ---
+    async function fetchMapStats() {
+      const select = document.getElementById('map-select');
+      state.mapId = select.value;
+      if (!state.mapId) return;
+
+      const loader = document.getElementById('map-loading');
+      loader.style.display = 'block';
+
+      try {
+        const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
+        const data = await res.json();
+        // Salva os top 15 brawlers com maior Win Rate neste mapa agora
+        state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate).slice(0, 15);
+      } catch (e) {
+        console.error("Erro ao puxar status do mapa", e);
+      }
+      
+      loader.style.display = 'none';
+      updateRecommendations();
+    }
+
+    // --- 3. CONTROLE DE INTERFACE ---
+    function setTurn(turn) {
+      state.turn = turn;
+      document.getElementById('btn-first').style.opacity = turn === 'first' ? '1' : '0.5';
+      document.getElementById('btn-mid').style.opacity = turn === 'mid' ? '1' : '0.5';
+      document.getElementById('btn-last').style.opacity = turn === 'last' ? '1' : '0.5';
+
+      const enemySec = document.getElementById('enemy-section');
+      if (turn === 'first') {
+        enemySec.style.opacity = '0.5';
+        enemySec.style.pointerEvents = 'none';
+        state.enemyPick = null;
+        document.getElementById('enemy-select').value = "";
+      } else {
+        enemySec.style.opacity = '1';
+        enemySec.style.pointerEvents = 'auto';
+      }
+      updateRecommendations();
+    }
+
+    // --- 4. MOTOR DE RECOMENDAÇÃO ---
+    function updateRecommendations() {
+      state.enemyPick = document.getElementById('enemy-select').value;
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+
+      if (!state.mapId || !state.turn) {
+        resultsDiv.innerHTML = '<p class="text-gray-400 text-sm text-center">Selecione o mapa e seu turno.</p>';
+        return;
+      }
+
+      // Base de candidatos: Cruzamento dos dados ao vivo (API) com nossa base de conhecimento local
+      let candidatos = state.mapTopBrawlers.map(apiBrawler => {
+        let know = brawlerKnowledge[apiBrawler.brawler.name] || { 
+          role: "mid", 
+          counters: ["(Depende do comp)", "Assassinos", "Snipers", "Tanks", "Throwers"] // Genérico se não estiver mapeado hardcoded
         };
+        return { name: apiBrawler.brawler.name, winRate: apiBrawler.winRate, ...know };
+      });
 
-        // Referências do DOM
-        const btnTurnFirst = document.getElementById('btn-turn-first');
-        const btnTurnMid = document.getElementById('btn-turn-mid');
-        const btnTurnLast = document.getElementById('btn-turn-last');
-        const descTurn = document.getElementById('turn-description');
-        const enemySection = document.getElementById('enemy-section');
-        const enemyGrid = document.getElementById('enemy-grid');
-        const resultsContainer = document.getElementById('recommendation-results');
-
-        function init() {
-            // Ordena o banco alfabeticamente para facilitar a busca do usuário
-            const sortedBrawlers = [...brawlersDB].sort((a, b) => a.name.localeCompare(b.name));
-            
-            sortedBrawlers.forEach(brawler => {
-                const btn = document.createElement('button');
-                btn.className = `p-2 rounded-lg bg-slate-700 text-slate-300 text-xs font-bold transition-all border-2 border-transparent active:scale-95`;
-                btn.textContent = brawler.name;
-                btn.onclick = () => toggleEnemyPick(brawler.name, btn);
-                enemyGrid.appendChild(btn);
-            });
-
-            // Força a atualização inicial para o estado de 1º Pick
-            processRecommendations();
+      // Aplica Filtros de Turno
+      if (state.turn === 'first') {
+        // First pick: Só pega brawlers seguros (safe), ignora punições fáceis
+        candidatos = candidatos.filter(b => b.role === 'safe');
+      } else if (state.turn === 'mid' || state.turn === 'last') {
+        if (state.enemyPick) {
+          // Se o inimigo escolheu algo, tenta achar quem ganha dele
+          // (Para simplificar no front, vamos apenas ordenar para evitar o counter do inimigo)
+          candidatos = candidatos.filter(b => {
+             // O meu brawler candidato NÃO pode ter o inimigo na lista de fraquezas dele
+             return !b.counters.includes(state.enemyPick);
+          });
         }
-
-        function setTurn(turnSelected) {
-            state.turn = turnSelected;
-            
-            // Reseta visual dos botões
-            [btnTurnFirst, btnTurnMid, btnTurnLast].forEach(btn => {
-                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
-                btn.classList.add('bg-slate-700', 'text-slate-300');
-            });
-
-            // Ativa o selecionado
-            if(turnSelected === 'first') {
-                btnTurnFirst.classList.remove('bg-slate-700', 'text-slate-300');
-                btnTurnFirst.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-                descTurn.textContent = "1º Pick: Escolha brawlers versáteis e seguros. Picks inimigos são ignorados.";
-                
-                // Esconde seção de inimigos
-                enemySection.classList.add('hidden', 'opacity-0');
-            } 
-            else if(turnSelected === 'mid') {
-                btnTurnMid.classList.remove('bg-slate-700', 'text-slate-300');
-                btnTurnMid.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-                descTurn.textContent = "2º/3º Pick: Neutralize o inimigo sem usar brawlers arriscados demais.";
-                
-                // Mostra seção de inimigos
-                enemySection.classList.remove('hidden');
-                setTimeout(() => enemySection.classList.remove('opacity-0'), 10); // Trigger transition
-            }
-            else if(turnSelected === 'last') {
-                btnTurnLast.classList.remove('bg-slate-700', 'text-slate-300');
-                btnTurnLast.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-                descTurn.textContent = "Last Pick: Puna as fraquezas deles. Lançadores e Assassinos estão liberados!";
-                
-                // Mostra seção de inimigos
-                enemySection.classList.remove('hidden');
-                setTimeout(() => enemySection.classList.remove('opacity-0'), 10);
-            }
-
-            // Recalcula resultados imediatamente
-            processRecommendations();
+        if (state.turn === 'last') {
+          // Last pick permite usar assassinos/throwers puros
+          candidatos = candidatos.sort((a,b) => (a.role === 'punish' ? -1 : 1));
         }
+      }
 
-        function toggleEnemyPick(brawlerName, btnElement) {
-            const index = state.enemyPicks.indexOf(brawlerName);
-            
-            if (index === -1) {
-                // Adiciona
-                state.enemyPicks.push(brawlerName);
-                btnElement.classList.replace('bg-slate-700', 'bg-red-900/40');
-                btnElement.classList.replace('border-transparent', 'border-red-500');
-                btnElement.classList.replace('text-slate-300', 'text-red-400');
-            } else {
-                // Remove
-                state.enemyPicks.splice(index, 1);
-                btnElement.classList.replace('bg-red-900/40', 'bg-slate-700');
-                btnElement.classList.replace('border-red-500', 'border-transparent');
-                btnElement.classList.replace('text-red-400', 'text-slate-300');
-            }
+      // Pega os 3 melhores
+      const best = candidatos.slice(0, 3);
 
-            processRecommendations();
-        }
+      if (best.length === 0) {
+        resultsDiv.innerHTML = '<p class="text-yellow-400 text-sm">Nenhuma recomendação perfeita encontrada. Pegue um brawler de conforto.</p>';
+        return;
+      }
 
-        function processRecommendations() {
-            resultsContainer.innerHTML = ''; // Limpa atual
+      // Renderiza as sugestões revelando os 5 counters de cada um
+      best.forEach(b => {
+        const countersHtml = b.counters.slice(0,5).map(c => 
+          `<span class="inline-block bg-red-900 text-red-100 text-[10px] px-2 py-1 rounded-md mr-1 mb-1 border border-red-700">${c}</span>`
+        ).join('');
 
-            let recomendados = [];
+        resultsDiv.innerHTML += `
+          <div class="glass p-3 rounded-lg border-l-4 border-green-500">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-bold text-lg text-white">${b.name}</span>
+              <span class="text-xs bg-green-900 text-green-300 px-2 py-1 rounded border border-green-700">Win Rate: ${b.winRate}%</span>
+            </div>
+            <div class="bg-red-950/50 p-2 rounded-md">
+              <p class="text-xs text-red-400 font-bold mb-1">⚠️ Sofre para (Evite se eles tiverem):</p>
+              <div class="flex flex-wrap">${countersHtml}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
 
-            if (state.turn === 'first') {
-                // Regra do 1º Pick: Sugerir APENAS brawlers Safe First Pick.
-                recomendados = brawlersDB.filter(b => b.role === 'safe_first');
-            } 
-            else {
-                // Regras para Mid ou Last pick precisam de pelo menos 1 inimigo selecionado
-                if (state.enemyPicks.length === 0) {
-                    resultsContainer.innerHTML = `
-                        <div class="text-center text-slate-500 text-sm py-6 italic fade-in">
-                            Selecione pelo menos um brawler inimigo acima para ver os counters.
-                        </div>`;
-                    return;
-                }
-
-                // Encontrar brawlers cujos "counters" incluem algum dos brawlers inimigos selecionados
-                recomendados = brawlersDB.filter(b => {
-                    // Impede de sugerir um brawler que o inimigo já pegou
-                    if (state.enemyPicks.includes(b.name)) return false; 
-
-                    // Verifica se 'b' tem vantagem contra pelo menos 1 inimigo escolhido
-                    return b.counters.some(inimigoQueEleGanha => state.enemyPicks.includes(inimigoQueEleGanha));
-                });
-
-                // Aplica regras de risco baseado na posição
-                if (state.turn === 'mid') {
-                    // Mid Pick: NÃO recomende Last Picks puros (muito fácil de ser anulado depois)
-                    recomendados = recomendados.filter(b => b.role !== 'last_pick');
-                }
-                
-                if (state.turn === 'last') {
-                    // Last Pick: Prioriza brawlers 'last_pick' (Assassinos/Throwers) para fechar o jogo
-                    recomendados.sort((a, b) => {
-                        if (a.role === 'last_pick' && b.role !== 'last_pick') return -1;
-                        if (a.role !== 'last_pick' && b.role === 'last_pick') return 1;
-                        return 0;
-                    });
-                }
-            }
-
-            if (recomendados.length === 0) {
-                resultsContainer.innerHTML = `
-                    <div class="text-center text-slate-400 text-sm py-6 bg-slate-800/80 rounded-xl fade-in border border-slate-700">
-                        Nenhum hard counter encontrado na base atual. <br/>Considere um Pick Seguro.
-                    </div>`;
-                return;
-            }
-
-            // Mapeando labels para a interface
-            const roleLabels = {
-                'safe_first': '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded uppercase font-bold">Pick Seguro</span>',
-                'mid': '<span class="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded uppercase font-bold">Sólido / Anti-Push</span>',
-                'last_pick': '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded uppercase font-bold">Punição Fatal</span>'
-            };
-
-            // Criar Cards de resultado
-            recomendados.forEach(brawler => {
-                const card = document.createElement('div');
-                card.className = `bg-slate-800 rounded-xl p-3 flex justify-between items-center fade-in role-${brawler.role} shadow-md`;
-                
-                // Texto de dica (pq recomendou)
-                let whyText = "";
-                if (state.turn !== 'first' && state.enemyPicks.length > 0) {
-                    const alvos = brawler.counters.filter(t => state.enemyPicks.includes(t));
-                    if (alvos.length > 0) {
-                        whyText = `<span class="text-xs text-slate-400">Excelente contra: <span class="text-red-400 font-semibold">${alvos.join(', ')}</span></span>`;
-                    }
-                } else {
-                    whyText = `<span class="text-xs text-slate-400">${brawler.desc}</span>`;
-                }
-
-                card.innerHTML = `
-                    <div class="flex flex-col">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="font-bold text-lg text-slate-100">${brawler.name}</span>
-                            ${roleLabels[brawler.role]}
-                        </div>
-                        ${whyText}
-                    </div>
-                    <button class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg text-sm font-bold shadow-md transition-all active:scale-90">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </button>
-                `;
-                resultsContainer.appendChild(card);
-            });
-        }
-
-        // Inicializa o APP
-        window.onload = init;
-    </script>
+    // Start
+    initAPI();
+  </script>
 </body>
 </html>
