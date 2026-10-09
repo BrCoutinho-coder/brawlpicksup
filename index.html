@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Tático & Offline</title>
+  <title>Brawl Draft Pro - Antibloqueio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -13,14 +13,12 @@
     ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
     ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
     
-    /* Terminal de Debug */
     #debug-terminal { display: none; background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-top: 2px solid #333; max-height: 200px; overflow-y: auto; }
     #debug-terminal p { margin: 2px 0; border-bottom: 1px dashed #111; padding-bottom: 2px; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col items-center pb-12">
 
-  <!-- Aba Lateral de Favoritos -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()"></div>
   <div id="sidebar" class="fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 z-50 transform translate-x-full p-4 overflow-hidden flex flex-col">
     <div class="flex justify-between items-center mb-4 shrink-0">
@@ -46,7 +44,6 @@
     </div>
 
     <main class="space-y-4">
-      <!-- 1. Mapa -->
       <div class="glass p-4 rounded-xl">
         <label class="block text-sm font-bold mb-2 text-gray-300">1. Rotação Atual</label>
         <select id="map-select" class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-1 text-sm" onchange="fetchMapStats()">
@@ -60,7 +57,6 @@
       </div>
 
       <div id="draft-area" class="space-y-4">
-        <!-- 2. Turno -->
         <div class="glass p-4 rounded-xl">
           <label class="block text-sm font-bold mb-2 text-gray-300">2. Qual o seu turno?</label>
           <div class="flex gap-2">
@@ -70,7 +66,6 @@
           </div>
         </div>
 
-        <!-- 3. Inimigos -->
         <div class="glass p-4 rounded-xl" id="enemy-section" style="opacity: 0.5; pointer-events: none;">
           <label class="block text-sm font-bold mb-2 text-gray-300">3. Picks Inimigos</label>
           <div id="selected-enemies-container" class="flex flex-wrap gap-2 mb-3"></div>
@@ -81,7 +76,6 @@
         </div>
       </div>
 
-      <!-- Análise da SUA ESCOLHA TRAVADA -->
       <div id="my-locked-pick" class="hidden glass p-4 rounded-xl border-2 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
         <div class="flex justify-between items-start mb-3 border-b border-slate-600 pb-2">
           <div>
@@ -95,36 +89,28 @@
           <img id="locked-img" src="" class="w-16 h-16 rounded-lg border border-slate-500 bg-slate-900 shadow-lg">
           
           <div class="flex-1 space-y-2">
-            <!-- BUILD IDEAL (Gadget, Star Power e Gears) -->
             <div class="bg-slate-800/80 p-2 rounded border border-slate-600">
               <p class="text-[10px] text-gray-400 font-bold mb-1">Build Recomendada:</p>
-              
               <div class="flex items-center gap-2 mb-1">
                 <img id="locked-gadget-img" src="" class="w-4 h-4 rounded-full bg-black">
                 <span id="locked-gadget-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
               </div>
-              
               <div class="flex items-center gap-2 mb-2">
                 <img id="locked-sp-img" src="" class="w-4 h-4 rounded-full bg-black">
                 <span id="locked-sp-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
               </div>
-
-              <!-- Engrenagens -->
               <div class="flex items-center gap-2 border-t border-slate-600 pt-1">
                 <span class="text-[8px] text-gray-500 font-bold uppercase">Gears:</span>
                 <img id="locked-gear1-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden">
                 <img id="locked-gear2-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden">
               </div>
-
             </div>
           </div>
         </div>
 
-        <!-- ALVOS -->
         <div id="locked-targets" class="mt-3 space-y-1"></div>
       </div>
 
-      <!-- SUGESTÕES LIVRES -->
       <div id="suggestions-area" class="mt-4">
         <div class="flex justify-between items-end mb-2 border-b border-green-800 pb-1">
           <h2 class="text-lg font-bold text-green-400">Sugestões de Pick:</h2>
@@ -141,22 +127,6 @@
   <div id="debug-terminal" class="w-full fixed bottom-0 left-0 z-50"></div>
 
   <script>
-    // --- MOTOR DE CONEXÃO BLINDADO (Anti-CORS e Anti-Cache) ---
-    async function fetchGarantido(url, tentativas = 3) {
-      // Adiciona um timestamp na URL para o navegador nunca puxar do cache, sem usar headers complexos
-      const cacheBuster = url.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`;
-      for (let i = 0; i < tentativas; i++) {
-        try {
-          const res = await fetch(url + cacheBuster);
-          if (!res.ok) throw new Error(`Erro no servidor: ${res.status}`);
-          return await res.json();
-        } catch (e) {
-          if (i === tentativas - 1) throw e;
-          await new Promise(resolve => setTimeout(resolve, 800)); // Espera quase 1 seg e tenta de novo
-        }
-      }
-    }
-
     function logDebug(msg, type='info') {
       const term = document.getElementById('debug-terminal');
       const time = new Date().toLocaleTimeString();
@@ -171,7 +141,34 @@
       term.style.display = term.style.display === 'block' ? 'none' : 'block';
     }
 
-    // Matriz de Classes (Pedra, Papel e Tesoura)
+    // --- O MOTOR ANTIBLOQUEIO E ANTI-BRANCO ---
+    async function fetchGarantido(url, checkKey = null) {
+      const fetchDireto = async (targetUrl) => {
+        const res = await fetch(targetUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        // Se a API mandar a estrutura mas as listas vierem zeradas, forçamos o erro para ativar o Proxy/Fallback
+        if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
+            throw new Error(`Dados vazios retornados em '${checkKey}'`);
+        }
+        return data;
+      };
+
+      try {
+        logDebug(`[DIRETO] Buscando: ${url.split('/').pop()}`);
+        return await fetchDireto(url);
+      } catch (e) {
+        logDebug(`⚠️ Bloqueio ou falha direta (${e.message}). Acionando Rota Proxy...`, 'warn');
+        try {
+          const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+          return await fetchDireto(proxyUrl);
+        } catch (proxyError) {
+          logDebug(`❌ Falha total. A API está offline ou retornando vazio. Acionando Fallback.`, 'error');
+          return {}; // Retorna objeto vazio para não explodir o JS e ativar o Fallback Tático de Classes
+        }
+      }
+    }
+
     const classAdvantages = {
       "Assassin": ["Artillery", "Marksman"],
       "Tank": ["Assassin"],
@@ -181,7 +178,6 @@
       "Damage Dealer": ["Tank", "Assassin"]
     };
 
-    // DNA DO MAPA (Inteligência Offline para quando a API de Win Rate falhar)
     const mapDNA = {
       "Snake Prairie": { type: "bush", boost: ["Tank", "Assassin"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky"] },
       "Cavern Churn": { type: "bush_walls", boost: ["Artillery", "Tank"], punish: ["Marksman"] },
@@ -189,7 +185,8 @@
       "Out in the Open": { type: "open", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"] },
       "Ring of Fire": { type: "choke", boost: ["Controller", "Artillery"], punish: ["Assassin"] },
       "Hard Rock Mine": { type: "mixed", boost: ["Controller", "Damage Dealer"], punish: [] },
-      "Crystal Arcade": { type: "mixed", boost: ["Marksman", "Assassin"], punish: ["Tank"] }
+      "Crystal Arcade": { type: "mixed", boost: ["Marksman", "Assassin"], punish: ["Tank"] },
+      "Stone Fort": { type: "mixed", boost: ["Artillery", "Controller"], punish: ["Assassin"] }
     };
 
     const tradutorModos = { "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo" };
@@ -202,42 +199,33 @@
       favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
-    function translateText(engMode, engMap) {
-      return `[${tradutorModos[engMode] || engMode}] ${tradutorMapas[engMap] || engMap}`;
-    }
-
-    function getFallbackAvatar(name) {
-      return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=e2e8f0&size=128`;
-    }
+    function translateText(engMode, engMap) { return `[${tradutorModos[engMode] || engMode}] ${tradutorMapas[engMap] || engMap}`; }
+    function getFallbackAvatar(name) { return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=e2e8f0&size=128`; }
 
     async function initAPI() {
-      logDebug("Iniciando requisição de Brawlers...");
       try {
-        const brawlersData = await fetchGarantido('https://api.brawlapi.com/v1/brawlers');
-        logDebug(`Carregados ${brawlersData.list.length} Brawlers.`);
+        const brawlersData = await fetchGarantido('https://api.brawlapi.com/v1/brawlers', 'list');
         
-        state.allBrawlers = brawlersData.list.map(b => ({
-          name: b.name, 
-          image: b.imageUrl2 || b.imageUrl,
-          className: b.class.name,
-          gadget: b.gadgets.length > 0 ? b.gadgets[0] : null,
-          starPower: b.starPowers.length > 0 ? b.starPowers[0] : null,
-          gears: b.gears || []
-        })).sort((a, b) => a.name.localeCompare(b.name));
+        if(brawlersData.list) {
+          state.allBrawlers = brawlersData.list.map(b => ({
+            name: b.name, image: b.imageUrl2 || b.imageUrl, className: b.class.name,
+            gadget: b.gadgets.length > 0 ? b.gadgets[0] : null,
+            starPower: b.starPowers.length > 0 ? b.starPowers[0] : null,
+            gears: b.gears || []
+          })).sort((a, b) => a.name.localeCompare(b.name));
+          logDebug(`✅ Carregados ${state.allBrawlers.length} Brawlers.`);
+        }
 
-        renderEnemyGrid();
-        renderFavoritesList();
+        renderEnemyGrid(); renderFavoritesList();
 
-        logDebug("Buscando eventos e mapas ao vivo...");
         const [eventsData, mapsData] = await Promise.all([
-          fetchGarantido('https://api.brawlapi.com/v1/events').catch(() => ({ active: [] })),
-          fetchGarantido('https://api.brawlapi.com/v1/maps').catch(() => ({ list: [] }))
+          fetchGarantido('https://api.brawlapi.com/v1/events', 'active'),
+          fetchGarantido('https://api.brawlapi.com/v1/maps', 'list')
         ]);
 
         state.allMapsList = mapsData.list || [];
-        
         const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => Number(ev.map.id)) : [];
-        logDebug(`Mapas Ativos detectados pela API: ${activeMapIds.length}`);
+        logDebug(`✅ Mapas Ativos detectados: ${activeMapIds.length}`);
 
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
@@ -250,18 +238,18 @@
         }
 
         const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(Number(m.id)));
-        mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
-        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
-        mapSelect.innerHTML += `</optgroup>`;
+        if(otherMaps.length > 0) {
+          mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
+          otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
+          mapSelect.innerHTML += `</optgroup>`;
+        }
 
         document.getElementById('api-status').innerText = '🟢 Conectado';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
         document.getElementById('api-status').classList.remove('animate-pulse');
       } catch (e) {
-        logDebug(`Erro crítico de API: ${e.message}`, 'error');
-        document.getElementById('api-status').innerText = '🔴 Erro API';
+        document.getElementById('api-status').innerText = '🔴 Sem API';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
-        document.getElementById('api-status').classList.remove('animate-pulse');
       }
     }
 
@@ -273,8 +261,6 @@
       if (!state.mapId) { previewBox.classList.add('hidden'); return; }
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
-      logDebug(`Buscando estatísticas para o mapa ID: ${state.mapId} (${selectedMap.name})`);
-
       if (selectedMap && selectedMap.imageUrl) {
         imgEl.style.display = 'block';
         imgEl.src = selectedMap.imageUrl;
@@ -284,20 +270,20 @@
       }
       
       document.getElementById('map-loading').style.display = 'block';
-      const data = await fetchGarantido(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
+      
+      // Busca stats (usamos checkKey 'stats' para forçar fallback se vier vazio)
+      const data = await fetchGarantido(`https://api.brawlapi.com/v1/maps/${state.mapId}`, 'stats');
       
       state.currentWinRates = {};
       state.isOfflineFallback = false;
 
-      // FILTRO ANTI-APAGÃO (FALLBACK OFFLINE)
       if (!data.stats || data.stats.length === 0) {
-        logDebug(`⚠️ A API retornou 0 estatísticas de Win Rate para este mapa. Ativando Fallback Tático e DNA do Mapa.`, 'warn');
+        logDebug(`🔧 Ativando Inteligência Tática do Mapa (Fallback)`, 'warn');
         state.isOfflineFallback = true;
         document.getElementById('fallback-badge').classList.remove('hidden');
         
         state.mapTopBrawlers = state.allBrawlers.map(b => ({
-          brawler: { name: b.name },
-          winRate: 50 // Nota base padrão
+          brawler: { name: b.name }, winRate: 50
         }));
       } else {
         document.getElementById('fallback-badge').classList.add('hidden');
@@ -306,11 +292,8 @@
       }
       
       document.getElementById('map-loading').style.display = 'none';
-      renderEnemyGrid();
-      renderFavoritesList();
-      
-      if(state.myPick) renderTargetAnalysis();
-      else updateRecommendations();
+      renderEnemyGrid(); renderFavoritesList();
+      if(state.myPick) renderTargetAnalysis(); else updateRecommendations();
     }
 
     function setMode(mode) {
@@ -327,17 +310,13 @@
       document.getElementById(`btn-${turn}`).style.opacity = '1';
       
       const eSec = document.getElementById('enemy-section');
-      if (turn === 'first') {
-        eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none';
-      } else {
-        eSec.style.opacity = '1'; eSec.style.pointerEvents = 'auto';
-      }
+      if (turn === 'first') { eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none'; } 
+      else { eSec.style.opacity = '1'; eSec.style.pointerEvents = 'auto'; }
       if(!state.myPick) updateRecommendations();
     }
 
     function renderEnemyGrid(filter = '') {
-      const grid = document.getElementById('enemy-grid');
-      grid.innerHTML = '';
+      const grid = document.getElementById('enemy-grid'); grid.innerHTML = '';
       let filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()) && !state.enemyPicks.includes(b.name));
       filtered.sort((a, b) => {
         const wrA = state.currentWinRates[a.name] || 0, wrB = state.currentWinRates[b.name] || 0;
@@ -345,11 +324,7 @@
       });
       filtered.forEach(b => {
         const wr = state.currentWinRates[b.name] ? `<div class="absolute top-0.5 right-0.5 bg-slate-900/80 text-gray-300 text-[8px] px-1 rounded pointer-events-none">${state.currentWinRates[b.name]}%</div>` : '';
-        grid.innerHTML += `
-          <div onclick="addEnemy('${b.name}')" class="relative cursor-pointer hover:scale-105 rounded overflow-hidden">
-            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-full aspect-square object-cover bg-slate-900 border border-slate-600 hover:border-red-400">
-            ${wr}
-          </div>`;
+        grid.innerHTML += `<div onclick="addEnemy('${b.name}')" class="relative cursor-pointer hover:scale-105 rounded overflow-hidden"><img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-full aspect-square object-cover bg-slate-900 border border-slate-600 hover:border-red-400">${wr}</div>`;
       });
     }
 
@@ -368,32 +343,23 @@
     }
 
     function renderSelectedEnemies() {
-      const container = document.getElementById('selected-enemies-container');
-      container.innerHTML = '';
+      const container = document.getElementById('selected-enemies-container'); container.innerHTML = '';
       state.enemyPicks.forEach(name => {
         const bInfo = state.allBrawlers.find(b => b.name === name);
         if (bInfo) {
-          container.innerHTML += `
-            <div class="flex items-center gap-1 bg-red-950/60 p-1 pr-2 rounded border border-red-900">
-              <img src="${bInfo.image}" onerror="this.src='${getFallbackAvatar(name)}'" class="w-6 h-6 rounded bg-slate-900">
-              <span class="text-xs font-bold text-white">${name}</span>
-              <button onclick="removeEnemy('${name}')" class="ml-1 text-red-500 hover:text-red-300 font-bold ml-2">X</button>
-            </div>`;
+          container.innerHTML += `<div class="flex items-center gap-1 bg-red-950/60 p-1 pr-2 rounded border border-red-900"><img src="${bInfo.image}" onerror="this.src='${getFallbackAvatar(name)}'" class="w-6 h-6 rounded bg-slate-900"><span class="text-xs font-bold text-white">${name}</span><button onclick="removeEnemy('${name}')" class="ml-1 text-red-500 hover:text-red-300 font-bold ml-2">X</button></div>`;
         }
       });
     }
 
-    // --- LÓGICA DE ESCOLHA TRAVADA (COM ENGRENAGENS) ---
     function selectMyPick(name) {
       state.myPick = name;
       document.getElementById('suggestions-area').classList.add('hidden');
       document.getElementById('my-locked-pick').classList.remove('hidden');
-      
       const bInfo = state.allBrawlers.find(b => b.name === name);
       document.getElementById('locked-name').innerText = name;
       document.getElementById('locked-img').src = bInfo.image;
       
-      // Gadget e Star Power
       if(bInfo.gadget) {
         document.getElementById('locked-gadget-img').src = bInfo.gadget.imageUrl;
         document.getElementById('locked-gadget-name').innerText = bInfo.gadget.name;
@@ -403,21 +369,15 @@
         document.getElementById('locked-sp-name').innerText = bInfo.starPower.name;
       }
 
-      // Filtro de Engrenagens (Gears)
-      const gear1 = document.getElementById('locked-gear1-img');
-      const gear2 = document.getElementById('locked-gear2-img');
+      const gear1 = document.getElementById('locked-gear1-img'); const gear2 = document.getElementById('locked-gear2-img');
       gear1.classList.add('hidden'); gear2.classList.add('hidden');
-      
       if (bInfo.gears && bInfo.gears.length >= 2) {
         let sortedGears = [...bInfo.gears].sort((a, b) => {
-          if(a.level !== b.level) return b.level - a.level;
-          return a.name.localeCompare(b.name);
+          if(a.level !== b.level) return b.level - a.level; return a.name.localeCompare(b.name);
         });
-        
         gear1.src = sortedGears[0].imageUrl; gear1.classList.remove('hidden');
         gear2.src = sortedGears[1].imageUrl; gear2.classList.remove('hidden');
       }
-      
       renderTargetAnalysis();
     }
 
@@ -430,46 +390,27 @@
 
     function renderTargetAnalysis() {
       if(!state.myPick) return;
-      const tContainer = document.getElementById('locked-targets');
-      tContainer.innerHTML = '';
-      
+      const tContainer = document.getElementById('locked-targets'); tContainer.innerHTML = '';
       if(state.enemyPicks.length === 0) {
-        tContainer.innerHTML = '<p class="text-[10px] text-gray-400 mt-2">Adicione inimigos no passo 3 para ver em quem focar.</p>';
-        return;
+        tContainer.innerHTML = '<p class="text-[10px] text-gray-400 mt-2">Adicione inimigos no passo 3 para ver em quem focar.</p>'; return;
       }
-
       const myInfo = state.allBrawlers.find(b => b.name === state.myPick);
-      
       state.enemyPicks.forEach(enemyName => {
         const eInfo = state.allBrawlers.find(b => b.name === enemyName);
         let statusHtml = '';
-        
         if (classAdvantages[myInfo.className] && classAdvantages[myInfo.className].includes(eInfo.className)) {
           statusHtml = `<span class="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold ml-auto">🎯 Alvo Ideal</span>`;
-        } 
-        else if (classAdvantages[eInfo.className] && classAdvantages[eInfo.className].includes(myInfo.className)) {
+        } else if (classAdvantages[eInfo.className] && classAdvantages[eInfo.className].includes(myInfo.className)) {
           statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ Evite (Counter)</span>`;
-        }
-        else {
+        } else {
           statusHtml = `<span class="text-gray-500 text-[10px] font-bold ml-auto">Neutro</span>`;
         }
-
-        tContainer.innerHTML += `
-          <div class="flex items-center gap-2 bg-slate-800 p-1.5 rounded border border-slate-600">
-            <img src="${eInfo.image}" class="w-6 h-6 rounded bg-slate-900">
-            <span class="text-xs text-white">${eInfo.name}</span>
-            <span class="text-[9px] text-gray-400">(${eInfo.className})</span>
-            ${statusHtml}
-          </div>
-        `;
+        tContainer.innerHTML += `<div class="flex items-center gap-2 bg-slate-800 p-1.5 rounded border border-slate-600"><img src="${eInfo.image}" class="w-6 h-6 rounded bg-slate-900"><span class="text-xs text-white">${eInfo.name}</span><span class="text-[9px] text-gray-400">(${eInfo.className})</span>${statusHtml}</div>`;
       });
     }
 
-    // --- LÓGICA MISTA (API WIN RATE + OFFLINE DNA + CLASSE) ---
     function updateRecommendations() {
-      const resDiv = document.getElementById('results');
-      resDiv.innerHTML = '';
-
+      const resDiv = document.getElementById('results'); resDiv.innerHTML = '';
       if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
 
@@ -479,41 +420,31 @@
       let candidatos = state.mapTopBrawlers.map(apiB => {
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
         let scoreFinal = apiB.winRate; 
-
         if (state.isOfflineFallback && dna && bInfo) {
           if (dna.boost.includes(bInfo.className)) scoreFinal += 20; 
           if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) scoreFinal += 25; 
           if (dna.punish.includes(bInfo.className)) scoreFinal -= 30; 
         }
-
         return { 
-          name: apiB.brawler.name, image: bInfo ? bInfo.image : '',
-          className: bInfo ? bInfo.className : '', 
-          isFav: state.favorites.includes(apiB.brawler.name), 
-          score: scoreFinal, baseWr: apiB.winRate
+          name: apiB.brawler.name, image: bInfo ? bInfo.image : '', className: bInfo ? bInfo.className : '', 
+          isFav: state.favorites.includes(apiB.brawler.name), score: scoreFinal, baseWr: apiB.winRate
         };
       });
 
       if (state.mode === 'ranked') {
         candidatos = candidatos.filter(b => !state.enemyPicks.includes(b.name));
-        
         if (state.turn === 'mid' || state.turn === 'last') {
           candidatos.forEach(c => {
             state.enemyPicks.forEach(enemyName => {
               const enemyClass = state.allBrawlers.find(e => e.name === enemyName)?.className;
-              if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) {
-                c.score += state.isOfflineFallback ? 15 : 2; 
-              }
-              if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) {
-                c.score -= state.isOfflineFallback ? 20 : 5; 
-              }
+              if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) c.score += state.isOfflineFallback ? 15 : 2; 
+              if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) c.score -= state.isOfflineFallback ? 20 : 5; 
             });
           });
         }
       }
 
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.score - a.score) : (b.isFav ? 1 : -1));
-      
       const best = candidatos.slice(0, 5);
       
       best.forEach(b => {
@@ -522,17 +453,7 @@
           ? `<span class="text-[10px] bg-purple-900/80 text-purple-200 px-1.5 py-0.5 rounded border border-purple-700/50 font-bold whitespace-nowrap">Score: ${b.score}</span>`
           : `<span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50 font-bold whitespace-nowrap">WR: ${b.baseWr}%</span>`;
 
-        resDiv.innerHTML += `
-          <div onclick="selectMyPick('${b.name}')" class="cursor-pointer glass p-2 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex items-center gap-3 hover:bg-slate-700 transition relative">
-            ${starHtml}
-            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg">
-            <div class="flex-1">
-              <span class="font-bold text-base text-white block">${b.name}</span>
-              <span class="text-[9px] text-gray-400">${b.className}</span>
-            </div>
-            ${scoreVisor}
-          </div>
-        `;
+        resDiv.innerHTML += `<div onclick="selectMyPick('${b.name}')" class="cursor-pointer glass p-2 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex items-center gap-3 hover:bg-slate-700 transition relative">${starHtml}<img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg"><div class="flex-1"><span class="font-bold text-base text-white block">${b.name}</span><span class="text-[9px] text-gray-400">${b.className}</span></div>${scoreVisor}</div>`;
       });
     }
 
