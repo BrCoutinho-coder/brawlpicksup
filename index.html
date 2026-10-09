@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Multi-Proxy & DNA</title>
+  <title>Brawl Draft Pro - Túnel JSON</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -53,7 +53,7 @@
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
           <img id="map-img" src="" class="h-32 object-contain" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando dados...</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Extraindo dados do túnel...</div>
       </div>
 
       <div id="draft-area" class="space-y-4">
@@ -101,8 +101,8 @@
               </div>
               <div class="flex items-center gap-2 border-t border-slate-600 pt-1">
                 <span class="text-[8px] text-gray-500 font-bold uppercase">Gears:</span>
-                <img id="locked-gear1-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden">
-                <img id="locked-gear2-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden">
+                <img id="locked-gear1-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
+                <img id="locked-gear2-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
               </div>
             </div>
           </div>
@@ -141,35 +141,55 @@
       term.style.display = term.style.display === 'block' ? 'none' : 'block';
     }
 
-    // --- NOVO MOTOR MULTI-PROXY (Anti-CORS Implacável) ---
+    // --- NOVO MOTOR BLINDADO (TÚNEL JSON API) ---
     async function fetchGarantido(url, checkKey = null) {
-      const proxies = [
-        url, // 1º: Tenta direto
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, // 2º: Codetabs Proxy
-        `https://corsproxy.io/?${encodeURIComponent(url)}` // 3º: CorsProxy
-      ];
-
-      for (let target of proxies) {
-        try {
-          const res = await fetch(target, { cache: 'no-store' });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          
+      // 1. Tenta a rota direta e normal
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
           const data = await res.json();
-          // Verifica se veio uma resposta válida mas com lista vazia
-          if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
-            throw new Error(`Dados zerados (${checkKey}) via ${target.split('/')[2]}`);
-          }
-          logDebug(`✅ Sucesso via: ${target.split('/')[2] || 'Direto'}`);
+          if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) throw new Error('Dados vazios (Direto)');
+          logDebug(`✅ Conexão Direta Aceita: ${url.split('/').pop()}`);
           return data;
-        } catch (e) {
-          logDebug(`⚠️ Falha na rota ${target.split('/')[2] || 'Direto'}: ${e.message}`, 'warn');
         }
+      } catch (e) {
+        logDebug(`⚠️ Bloqueio Direto. Acionando Túnel JSON...`, 'warn');
       }
-      logDebug(`❌ Todas as rotas de API falharam para ${url.split('/').pop()}`, 'error');
-      return {}; // Retorna vazio para o sistema usar a inteligência local
+
+      // 2. Rota de Tunelamento (Bypass Absoluto via AllOrigins GET)
+      try {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl);
+        const dataWrapper = await res.json();
+        
+        if (dataWrapper.contents) {
+          // Desempacota a string que o servidor enviou de volta
+          const data = JSON.parse(dataWrapper.contents);
+          if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
+            throw new Error(`Dados zerados no túnel`);
+          }
+          logDebug(`✅ Sucesso via Túnel JSON!`);
+          return data;
+        }
+        throw new Error('Conteúdo vazio no túnel');
+      } catch (e) {
+        logDebug(`⚠️ AllOrigins falhou. Tentando ThingProxy...`, 'warn');
+      }
+      
+      // 3. Último recurso Proxy
+      try {
+        const proxyUrl2 = `https://thingproxy.freeboard.io/fetch/${url}`;
+        const res = await fetch(proxyUrl2);
+        const data = await res.json();
+        if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) throw new Error('Vazio no ThingProxy');
+        logDebug(`✅ Sucesso via ThingProxy!`);
+        return data;
+      } catch (e) {
+        logDebug(`❌ Bloqueio total do servidor da API. Acionando Tática Offline.`, 'error');
+        return {}; 
+      }
     }
 
-    // Matriz de Classes Oficial do Brawl
     const classAdvantages = {
       "Assassin": ["Artillery", "Marksman"],
       "Tank": ["Assassin"],
@@ -180,9 +200,8 @@
       "Support": []
     };
 
-    // DNA DO MAPA (Chaves padronizadas para não dar erro de maiúscula/espaço)
     const mapDNA = {
-      "snakeprairie": { name: "Pradaria da Serpente", boost: ["Tank", "Assassin", "Support"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa"] },
+      "snakeprairie": { name: "Pradaria da Serpente", boost: ["Tank", "Assassin", "Support"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky"] },
       "cavernchurn": { name: "Caverna Convulsiva", boost: ["Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Rico", "Dynamike"] },
       "shootingstar": { name: "Tiro Aberto", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Piper", "Nani", "Mandy"] },
       "outintheopen": { name: "Ao Ar Livre", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Angelo", "Piper"] },
@@ -273,14 +292,13 @@
       
       document.getElementById('map-loading').style.display = 'block';
       
-      // Busca stats
       const data = await fetchGarantido(`https://api.brawlapi.com/v1/maps/${state.mapId}`, 'stats');
       
       state.currentWinRates = {};
       state.isOfflineFallback = false;
 
       if (!data.stats || data.stats.length === 0) {
-        logDebug(`⚠️ API falhou em retornar as vitórias pro mapa ${selectedMap.name}. Acionando Tática Pura.`, 'warn');
+        logDebug(`⚠️ Win Rates falharam. Acionando Tática Pura.`, 'warn');
         state.isOfflineFallback = true;
         document.getElementById('fallback-badge').classList.remove('hidden');
         
@@ -417,8 +435,6 @@
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
-      
-      // Busca o DNA usando a chave exata minúscula e sem espaços
       const normalizedMapName = selectedMap ? normalizeStr(selectedMap.name) : "";
       const dna = mapDNA[normalizedMapName]; 
 
@@ -427,20 +443,10 @@
         let scoreFinal = apiB.winRate; 
         let tagsAtivas = [];
 
-        // Inteligência Offline Extrema (Só aciona se a API falhar)
         if (state.isOfflineFallback && dna && bInfo) {
-          if (dna.boost.includes(bInfo.className)) {
-            scoreFinal += 20; 
-            tagsAtivas.push('👍 Vantagem Terreno');
-          }
-          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) {
-            scoreFinal += 30; 
-            tagsAtivas.push('👑 Meta do Mapa');
-          }
-          if (dna.punish.includes(bInfo.className)) {
-            scoreFinal -= 40; // Punição pesada (Ex: Lançador na Moita = Morte)
-            tagsAtivas.push('❌ Terrível aqui');
-          }
+          if (dna.boost.includes(bInfo.className)) { scoreFinal += 20; tagsAtivas.push('👍 Vantagem Terreno'); }
+          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += 30; tagsAtivas.push('👑 Meta do Mapa'); }
+          if (dna.punish.includes(bInfo.className)) { scoreFinal -= 40; tagsAtivas.push('❌ Terrível aqui'); }
         }
 
         return { 
@@ -477,7 +483,6 @@
           ? `<span class="text-[10px] bg-purple-900/80 text-purple-200 px-1.5 py-0.5 rounded border border-purple-700/50 font-bold whitespace-nowrap">Nota: ${b.score}</span>`
           : `<span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50 font-bold whitespace-nowrap">WR: ${b.baseWr}%</span>`;
 
-        // Tags do por que ele recomendou isso no offline
         let htmlTags = '';
         if (state.isOfflineFallback && b.tags.length > 0) {
            htmlTags = `<div class="flex gap-1 mt-1">` + b.tags.map(t => `<span class="text-[8px] bg-slate-800 text-gray-400 px-1 rounded border border-slate-700">${t}</span>`).join('') + `</div>`;
