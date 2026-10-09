@@ -8,7 +8,6 @@
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
     .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-    /* Aba lateral */
     #sidebar { transition: transform 0.3s ease-in-out; }
   </style>
 </head>
@@ -21,9 +20,8 @@
       <h2 class="font-bold text-yellow-400">Meus Brawlers</h2>
       <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white text-xl">&times;</button>
     </div>
-    <p class="text-xs text-gray-400 mb-4">Eles terão prioridade nas recomendações.</p>
-    <div id="favorites-list" class="space-y-2 flex flex-col text-sm">
-      <!-- Preenchido via JS -->
+    <div id="favorites-list" class="space-y-1 flex flex-col text-sm">
+      <p class="text-xs text-gray-400 mb-2">Carregando todos os brawlers...</p>
     </div>
   </div>
 
@@ -52,10 +50,16 @@
         <select id="map-select" class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-1 text-sm" onchange="fetchMapStats()">
           <option value="">Carregando mapas...</option>
         </select>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden">Puxando Win Rates...</div>
+        
+        <!-- Imagem do Mapa -->
+        <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative">
+          <img id="map-img" src="" class="w-full h-24 object-cover" alt="Mapa">
+        </div>
+        
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Puxando Win Rates...</div>
       </div>
 
-      <!-- Área de Draft (Esconde no Casual) -->
+      <!-- Área de Draft -->
       <div id="draft-area" class="space-y-4">
         <div class="glass p-4 rounded-xl">
           <label class="block text-sm font-bold mb-2 text-gray-300">2. Seu turno</label>
@@ -84,64 +88,90 @@
 
   <script>
     let state = {
-      mode: 'ranked', // 'ranked' ou 'casual'
+      mode: 'ranked',
       mapId: null, turn: null, enemyPick: null, mapTopBrawlers: [],
+      allBrawlersList: [], // Puxado dinamicamente
+      activeEvents: [],    // Guarda os eventos para pegar a imagem
       favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
+    // Base auxiliar para definir se o brawler é First Pick seguro ou Punição
+    // Brawlers não listados aqui assumem o papel genérico ("mid") e counters básicos.
     const brawlerKnowledge = {
-      "Belle": { role: "safe", counters: ["Piper", "Nani", "Mortis", "Edgar", "Mico"] },
-      "Piper": { role: "safe", counters: ["Nani", "Mortis", "Mico", "Meg", "Leon"] },
-      "Buster": { role: "safe", counters: ["Colette", "Gale", "Chester", "Lou", "Charlie"] },
-      "Meg": { role: "safe", counters: ["Colette", "Chester", "Gale", "Amber", "Clancy"] },
-      "Gene": { role: "safe", counters: ["Buster", "Fang", "Tara", "Sandy", "Max"] },
-      "Mortis": { role: "punish", counters: ["Shelly", "Bull", "Gale", "Surge", "Jacky"] },
-      "Edgar": { role: "punish", counters: ["Gale", "Surge", "Shelly", "Piper", "Charlie"] },
-      "Dynamike": { role: "punish", counters: ["Mortis", "Mico", "Edgar", "Leon", "Max"] },
-      "Tick": { role: "punish", counters: ["Mortis", "Edgar", "Mico", "Lily", "Leon"] },
-      "Colette": { role: "mid", counters: ["Piper", "Nani", "Belle", "Spike", "Crow"] },
-      "Gale": { role: "mid", counters: ["Piper", "Belle", "Nani", "Mandy", "Grom"] }
+      "Belle": { role: "safe", counters: ["Piper", "Nani", "Mortis", "Edgar"] },
+      "Piper": { role: "safe", counters: ["Nani", "Mortis", "Mico", "Meg"] },
+      "Buster": { role: "safe", counters: ["Colette", "Gale", "Chester", "Lou"] },
+      "Meg": { role: "safe", counters: ["Colette", "Chester", "Gale", "Amber"] },
+      "Gene": { role: "safe", counters: ["Buster", "Fang", "Tara", "Sandy"] },
+      "Mortis": { role: "punish", counters: ["Shelly", "Bull", "Gale", "Surge"] },
+      "Edgar": { role: "punish", counters: ["Gale", "Surge", "Shelly", "Charlie"] },
+      "Dynamike": { role: "punish", counters: ["Mortis", "Mico", "Edgar", "Leon"] },
+      "Tick": { role: "punish", counters: ["Mortis", "Edgar", "Mico", "Lily"] }
     };
 
-    // --- SETUP INICIAL ---
     async function initAPI() {
       try {
-        const res = await fetch('https://api.brawlapi.com/v1/events');
-        const data = await res.json();
-        const select = document.getElementById('map-select');
-        select.innerHTML = '<option value="">Selecione o mapa...</option>';
-        data.active.forEach(ev => select.innerHTML += `<option value="${ev.map.id}">[${ev.map.gameMode.name}] ${ev.map.name}</option>`);
+        // 1. Puxa todos os Brawlers do jogo
+        const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
+        const brawlersData = await brawlersRes.json();
+        state.allBrawlersList = brawlersData.list.map(b => b.name).sort();
 
+        // 2. Preenche select de inimigos e sidebar
         const enemySelect = document.getElementById('enemy-select');
-        Object.keys(brawlerKnowledge).sort().forEach(b => enemySelect.innerHTML += `<option value="${b}">${b}</option>`);
+        state.allBrawlersList.forEach(b => enemySelect.innerHTML += `<option value="${b}">${b}</option>`);
+        renderFavoritesList();
+
+        // 3. Puxa os mapas ativos
+        const eventsRes = await fetch('https://api.brawlapi.com/v1/events');
+        const eventsData = await eventsRes.json();
+        state.activeEvents = eventsData.active.filter(ev => ev.map); // Previne crash se o mapa for null
+        
+        const mapSelect = document.getElementById('map-select');
+        mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
+        state.activeEvents.forEach(ev => {
+          mapSelect.innerHTML += `<option value="${ev.map.id}">[${ev.map.gameMode.name}] ${ev.map.name}</option>`;
+        });
 
         document.getElementById('api-status').innerText = '🟢 Ao Vivo';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
         document.getElementById('api-status').classList.remove('animate-pulse');
-        renderFavoritesList();
       } catch (e) {
         document.getElementById('api-status').innerText = '🔴 Erro API';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
+        console.error(e);
       }
     }
 
     async function fetchMapStats() {
       state.mapId = document.getElementById('map-select').value;
-      if (!state.mapId) return;
+      const previewBox = document.getElementById('map-preview');
+      const imgEl = document.getElementById('map-img');
+
+      if (!state.mapId) {
+        previewBox.classList.add('hidden');
+        return;
+      }
+
+      // Atualiza a imagem
+      const selectedEvent = state.activeEvents.find(ev => ev.map.id == state.mapId);
+      if (selectedEvent && selectedEvent.map.environment.imageUrl) {
+        imgEl.src = selectedEvent.map.environment.imageUrl;
+        previewBox.classList.remove('hidden');
+      }
+
       document.getElementById('map-loading').style.display = 'block';
       const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
       const data = await res.json();
-      state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate).slice(0, 15);
+      state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate).slice(0, 20);
       document.getElementById('map-loading').style.display = 'none';
       updateRecommendations();
     }
 
-    // --- CONTROLE DE MODO E TURNO ---
+    // --- CONTROLES DA INTERFACE ---
     function setMode(mode) {
       state.mode = mode;
       document.getElementById('mode-casual').className = mode === 'casual' ? 'flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow' : 'flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400';
       document.getElementById('mode-ranked').className = mode === 'ranked' ? 'flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow' : 'flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400';
-      
       document.getElementById('draft-area').style.display = mode === 'casual' ? 'none' : 'block';
       updateRecommendations();
     }
@@ -165,22 +195,27 @@
     function toggleSidebar() {
       const sb = document.getElementById('sidebar');
       const overlay = document.getElementById('sidebar-overlay');
-      if (sb.classList.contains('translate-x-full')) {
-        sb.classList.remove('translate-x-full');
-        overlay.classList.remove('hidden');
-      } else {
-        sb.classList.add('translate-x-full');
-        overlay.classList.add('hidden');
-      }
+      sb.classList.toggle('translate-x-full');
+      overlay.classList.toggle('hidden');
     }
 
     function renderFavoritesList() {
       const list = document.getElementById('favorites-list');
       list.innerHTML = '';
-      Object.keys(brawlerKnowledge).sort().forEach(b => {
+      
+      // Ordena: Favoritos primeiro, depois ordem alfabética
+      const sortedBrawlers = [...state.allBrawlersList].sort((a, b) => {
+        const aFav = state.favorites.includes(a);
+        const bFav = state.favorites.includes(b);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return a.localeCompare(b);
+      });
+
+      sortedBrawlers.forEach(b => {
         const isFav = state.favorites.includes(b);
         list.innerHTML += `
-          <label class="flex items-center gap-2 p-1 hover:bg-slate-800 rounded cursor-pointer">
+          <label class="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded cursor-pointer border-b border-slate-800">
             <input type="checkbox" ${isFav ? 'checked' : ''} onchange="toggleFav('${b}')" class="w-4 h-4 accent-yellow-500">
             <span class="${isFav ? 'text-yellow-400 font-bold' : 'text-gray-300'}">${b}</span>
           </label>
@@ -199,7 +234,7 @@
       updateRecommendations();
     }
 
-    // --- LÓGICA FINAL ---
+    // --- RECOMENDAÇÕES ---
     function updateRecommendations() {
       state.enemyPick = document.getElementById('enemy-select').value;
       const resDiv = document.getElementById('results');
@@ -209,8 +244,8 @@
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione seu turno.</p>'; return; }
 
       let candidatos = state.mapTopBrawlers.map(apiB => {
-        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["Tanks", "Snipers", "Assassinos", "Spawners", "Throwers"] };
-        return { name: apiBrawler = apiB.brawler.name, winRate: apiB.winRate, isFav: state.favorites.includes(apiB.brawler.name), ...know };
+        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["Tanks", "Snipers", "Assassinos", "Spawners"] };
+        return { name: apiB.brawler.name, winRate: apiB.winRate, isFav: state.favorites.includes(apiB.brawler.name), ...know };
       });
 
       if (state.mode === 'ranked') {
@@ -219,21 +254,25 @@
         if (state.turn === 'last') candidatos.sort((a,b) => (a.role === 'punish' ? -1 : 1));
       }
 
-      // Prioridade mestre: Se é favorito, sobe. Senão, fica pela Win Rate.
+      // Ordena: Favoritos têm vantagem brutal na lista
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.winRate - a.winRate) : (b.isFav ? 1 : -1));
 
-      const best = candidatos.slice(0, 4); // Mostra 4 no max
-      if(best.length === 0) { resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum brawler 100% seguro mapeado. Vá com seu melhor.</p>'; return; }
+      const best = candidatos.slice(0, 4);
+      if(best.length === 0) { resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum mapeado atende os filtros. Vá com seu favorito do mapa.</p>'; return; }
 
       best.forEach(b => {
-        const counters = b.counters.slice(0,5).map(c => `<span class="bg-red-900 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
+        const counters = b.counters.slice(0,4).map(c => `<span class="bg-red-900 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
+        // Estrela em cima do nome se for favorito
+        const starHtml = b.isFav ? `<div class="text-2xl drop-shadow-md mb-[-8px]">⭐</div>` : '';
+        
         resDiv.innerHTML += `
-          <div class="glass p-2.5 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'}">
-            <div class="flex justify-between items-center mb-1.5">
-              <span class="font-bold text-base text-white">${b.isFav ? '⭐ ' : ''}${b.name}</span>
-              <span class="text-[10px] bg-green-900 px-1.5 py-0.5 rounded border border-green-700">Win Rate: ${b.winRate}%</span>
+          <div class="glass p-2.5 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex flex-col relative overflow-hidden">
+            ${starHtml}
+            <div class="flex justify-between items-end mb-1.5 z-10 pt-2">
+              <span class="font-bold text-lg text-white leading-none">${b.name}</span>
+              <span class="text-[10px] bg-green-900 text-green-200 px-1.5 py-0.5 rounded border border-green-700">WR: ${b.winRate}%</span>
             </div>
-            <div class="bg-red-950/40 p-1.5 rounded">
+            <div class="bg-red-950/40 p-1.5 rounded z-10">
               <p class="text-[10px] text-red-400 font-bold mb-1">⚠️ Sofre para:</p>
               <div class="flex flex-wrap">${counters}</div>
             </div>
