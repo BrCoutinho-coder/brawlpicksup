@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro</title>
+  <title>Brawl Draft Pro - 100% Auto</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -37,8 +37,8 @@
     </header>
 
     <div class="flex bg-slate-800 rounded-lg p-1 mb-4 border border-slate-700">
-      <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual (Rápido)</button>
-      <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada (Draft)</button>
+      <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual</button>
+      <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada</button>
     </div>
 
     <main class="space-y-4">
@@ -50,9 +50,10 @@
         </select>
         
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900">
+          <!-- Oculta a imagem automaticamente se a URL fornecida pela API estiver quebrada -->
           <img id="map-img" src="" class="w-full h-24 object-cover opacity-80" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando Win Rates...</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando Win Rates Globais...</div>
       </div>
 
       <!-- Área de Draft -->
@@ -69,9 +70,7 @@
         <!-- 3. Picks Inimigos -->
         <div class="glass p-4 rounded-xl" id="enemy-section" style="opacity: 0.5; pointer-events: none;">
           <label class="block text-sm font-bold mb-2 text-gray-300">3. Picks da Equipe Inimiga</label>
-          
           <div id="selected-enemies-container" class="flex flex-wrap gap-2 mb-3"></div>
-
           <div id="enemy-picker">
             <input type="text" id="enemy-search" placeholder="Buscar brawler inimigo..." class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-2 text-sm" oninput="renderEnemyGrid(this.value)">
             <div id="enemy-grid" class="grid grid-cols-5 gap-1.5 max-h-40 overflow-y-auto p-1"></div>
@@ -87,56 +86,26 @@
   </div>
 
   <script>
-    // Dicionários de Tradução
-    const tradutorModos = {
-      "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", 
-      "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", 
-      "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo"
-    };
-
-    const tradutorMapas = {
-      "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Temple Ruins": "Ruínas do Templo",
-      "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca",
-      "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto",
-      "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada",
-      "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central",
-      "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura",
-      "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes",
-      "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm",
-      "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva",
-      "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central"
-    };
-
     let state = {
       mode: 'ranked', mapId: null, turn: null, enemyPicks: [], mapTopBrawlers: [],
       currentWinRates: {}, allBrawlers: [], allMapsList: [],
       favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
-    const brawlerKnowledge = {
-      "Belle": { role: "safe", counters: ["Piper", "Nani", "Mortis", "Edgar"] },
-      "Piper": { role: "safe", counters: ["Nani", "Mortis", "Mico", "Meg"] },
-      "Buster": { role: "safe", counters: ["Colette", "Gale", "Chester", "Lou"] },
-      "Meg": { role: "safe", counters: ["Colette", "Chester", "Gale", "Amber"] },
-      "Gene": { role: "safe", counters: ["Buster", "Fang", "Tara", "Sandy"] },
-      "Mortis": { role: "punish", counters: ["Shelly", "Bull", "Gale", "Surge"] },
-      "Edgar": { role: "punish", counters: ["Gale", "Surge", "Shelly", "Charlie"] },
-      "Dynamike": { role: "punish", counters: ["Mortis", "Mico", "Edgar", "Leon"] },
-      "Tick": { role: "punish", counters: ["Mortis", "Edgar", "Mico", "Lily"] }
-    };
-
-    function translateText(engMode, engMap) {
-      const mode = tradutorModos[engMode] || engMode;
-      const map = tradutorMapas[engMap] || engMap;
-      return `[${mode}] ${map}`;
+    // Gera um avatar provisório se a imagem do servidor falhar
+    function getFallbackAvatar(name) {
+      return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=e2e8f0&size=128`;
     }
 
     async function initAPI() {
       try {
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
         const brawlersData = await brawlersRes.json();
+        
+        // Pega a URL oficial
         state.allBrawlers = brawlersData.list.map(b => ({
-          name: b.name, image: b.imageUrl2 || b.imageUrl
+          name: b.name, 
+          image: b.imageUrl2 || b.imageUrl
         })).sort((a, b) => a.name.localeCompare(b.name));
 
         renderEnemyGrid();
@@ -158,14 +127,14 @@
 
         const activeMaps = state.allMapsList.filter(m => activeMapIds.includes(m.id));
         if(activeMaps.length > 0) {
-          mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora">`;
-          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
+          mapSelect.innerHTML += `<optgroup label="🟢 Active Now">`;
+          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
           mapSelect.innerHTML += `</optgroup>`;
         }
 
         const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(m.id));
-        mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
-        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
+        mapSelect.innerHTML += `<optgroup label="⚪ All Maps">`;
+        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
         mapSelect.innerHTML += `</optgroup>`;
 
         document.getElementById('api-status').innerText = '🟢 Ao Vivo';
@@ -230,12 +199,11 @@
       updateRecommendations();
     }
 
-    // --- GRADES E FAVORITOS (AGORA COM % DISCRETA) ---
+    // Retorna a tag de % estilizada e super discreta
     function getSubtleWrTag(brawlerName) {
       const wr = state.currentWinRates[brawlerName];
       if (!wr) return '';
-      // Fundo escuro semi-transparente, texto cinza/branco pequeno
-      return `<div class="absolute top-0.5 right-0.5 bg-slate-900/70 text-gray-300 text-[8px] px-1 rounded backdrop-blur-sm border border-slate-700/50">${wr}%</div>`;
+      return `<div class="absolute top-0.5 right-0.5 bg-slate-900/70 text-gray-300 text-[8px] px-1 rounded backdrop-blur-sm border border-slate-700/50 pointer-events-none">${wr}%</div>`;
     }
 
     function renderEnemyGrid(filter = '') {
@@ -251,7 +219,7 @@
       filtered.forEach(b => {
         grid.innerHTML += `
           <div onclick="addEnemy('${b.name}', '${b.image}')" class="relative cursor-pointer hover:scale-105 transition rounded overflow-hidden">
-            <img src="${b.image}" class="w-full aspect-square object-cover bg-slate-900 border border-slate-600 hover:border-yellow-400" alt="${b.name}">
+            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-full aspect-square object-cover bg-slate-900 border border-slate-600 hover:border-yellow-400" alt="${b.name}">
             ${getSubtleWrTag(b.name)}
           </div>
         `;
@@ -278,7 +246,7 @@
         if (bInfo) {
           container.innerHTML += `
             <div class="flex items-center gap-1 bg-red-950/60 p-1 pr-2 rounded border border-red-900">
-              <img src="${bInfo.image}" class="w-6 h-6 rounded bg-slate-900">
+              <img src="${bInfo.image}" onerror="this.src='${getFallbackAvatar(name)}'" class="w-6 h-6 rounded bg-slate-900">
               <span class="text-xs font-bold text-white">${name}</span>
               <button onclick="removeEnemy('${name}')" class="ml-1 text-red-500 hover:text-red-300 font-bold ml-2">X</button>
             </div>
@@ -311,7 +279,7 @@
         
         list.innerHTML += `
           <div onclick="toggleFav('${b.name}')" class="cursor-pointer flex flex-col items-center gap-1 relative">
-            <img src="${b.image}" class="w-full aspect-square object-cover rounded-lg bg-slate-800 ${style}">
+            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-full aspect-square object-cover rounded-lg bg-slate-800 ${style}">
             <span class="text-[9px] truncate w-full text-center ${isFav ? 'text-yellow-400 font-bold' : 'text-gray-400'}">${b.name}</span>
             ${getSubtleWrTag(b.name)}
           </div>
@@ -328,7 +296,6 @@
       updateRecommendations();
     }
 
-    // --- RECOMENDAÇÕES COM FALLBACK ---
     function updateRecommendations() {
       const resDiv = document.getElementById('results');
       resDiv.innerHTML = '';
@@ -336,66 +303,44 @@
       if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno (1º, Meio ou Último).</p>'; return; }
 
-      // Cria a lista base cruzando os dados da API com o nosso conhecimento
-      let baseCandidatos = state.mapTopBrawlers.map(apiB => {
-        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["(Em estudo)"] };
+      // 100% Data-Driven: Pega a lista crua de Win Rates e remove os já selecionados
+      let candidatos = state.mapTopBrawlers.map(apiB => {
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
         return { 
           name: apiB.brawler.name, image: bInfo ? bInfo.image : '',
-          winRate: apiB.winRate, isFav: state.favorites.includes(apiB.brawler.name), ...know 
+          winRate: apiB.winRate, isFav: state.favorites.includes(apiB.brawler.name)
         };
       });
 
-      let candidatos = [...baseCandidatos];
-      let exibiuFallback = false;
-
-      if (state.mode === 'ranked') {
-        if (state.turn === 'first') {
-          candidatos = candidatos.filter(b => b.role === 'safe');
-        } else if (state.enemyPicks.length > 0) {
-          candidatos = candidatos.filter(b => {
-            return !state.enemyPicks.some(inimigo => b.counters.includes(inimigo));
-          });
-        }
-        if (state.turn === 'last') {
-          candidatos.sort((a,b) => (a.role === 'punish' ? -1 : 1));
-        }
+      if (state.mode === 'ranked' && state.enemyPicks.length > 0) {
+        candidatos = candidatos.filter(b => !state.enemyPicks.includes(b.name));
       }
 
-      // FALLBACK ANTI-VAZIO: Se os filtros excluírem todo mundo, restaura a lista base!
-      if (candidatos.length === 0) {
-        candidatos = [...baseCandidatos];
-        exibiuFallback = true;
-      }
-
+      // Ordena por Favorito, depois por Win Rate
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.winRate - a.winRate) : (b.isFav ? 1 : -1));
+      
       const best = candidatos.slice(0, 5);
       
-      if (exibiuFallback) {
-        resDiv.innerHTML += `<p class="text-[10px] text-yellow-400 p-2 bg-yellow-900/30 rounded border border-yellow-800 mb-2">⚠️ Restrições ignoradas: A composição inimiga bloqueou as recomendações ideais. Sugerindo com base no Win Rate puro do mapa.</p>`;
+      if(best.length === 0) { 
+        resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum dado retornado para este mapa.</p>'; 
+        return; 
       }
 
       best.forEach(b => {
-        const counters = b.counters.slice(0,4).map(c => `<span class="bg-red-900/80 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
         const starHtml = b.isFav ? `<div class="absolute -top-2 -left-2 text-xl drop-shadow-md z-20">⭐</div>` : '';
         
         resDiv.innerHTML += `
           <div class="glass p-2 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex flex-col relative">
             ${starHtml}
-            <div class="flex items-center gap-3 mb-2">
-              <img src="${b.image}" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg">
+            <div class="flex items-center gap-3">
+              <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg">
               <div class="flex-1">
                 <div class="flex justify-between items-center">
                   <span class="font-bold text-base text-white">${b.name}</span>
-                  <span class="text-[10px] bg-green-900 text-green-200 px-1.5 py-0.5 rounded border border-green-700 font-bold">WR: ${b.winRate}%</span>
+                  <span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50">Taxa de Vitória: ${b.winRate}%</span>
                 </div>
               </div>
             </div>
-            ${counters.length > 0 && counters !== '<span class="bg-red-900/80 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">(Em estudo)</span>' ? `
-            <div class="bg-red-950/40 p-1.5 rounded">
-              <p class="text-[9px] text-red-400 font-bold mb-1 uppercase">⚠️ Evite se eles tiverem:</p>
-              <div class="flex flex-wrap">${counters}</div>
-            </div>` : ''}
           </div>
         `;
       });
