@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Ao Vivo</title>
+  <title>Brawl Draft Pro - Ao Vivo & DB</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SUPABASE CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
     .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -13,31 +15,24 @@
 </head>
 <body class="min-h-screen flex flex-col items-center">
 
-  <!-- Aba Lateral de Favoritos -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()"></div>
   <div id="sidebar" class="fixed top-0 right-0 h-full w-64 bg-slate-900 border-l border-slate-700 z-50 transform translate-x-full p-4 overflow-y-auto">
     <div class="flex justify-between items-center mb-4">
       <h2 class="font-bold text-yellow-400">Meus Brawlers</h2>
       <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white text-xl">&times;</button>
     </div>
-    <div id="favorites-list" class="space-y-1 flex flex-col text-sm">
-      <p class="text-xs text-gray-400 mb-2">Carregando todos os brawlers...</p>
-    </div>
+    <div id="favorites-list" class="space-y-1 flex flex-col text-sm"></div>
   </div>
 
   <div class="w-full max-w-md p-4">
-    <!-- Header -->
     <header class="flex justify-between items-center mb-4">
       <h1 class="text-xl font-bold text-yellow-400">Brawl Draft</h1>
       <div class="flex items-center gap-2">
-        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">
-          🟡 Conectando...
-        </div>
+        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Conectando...</div>
         <button onclick="toggleSidebar()" class="bg-slate-800 p-2 rounded text-xl border border-slate-600 hover:bg-slate-700">⭐</button>
       </div>
     </header>
 
-    <!-- Toggle Casual / Ranqueada -->
     <div class="flex bg-slate-800 rounded-lg p-1 mb-4 border border-slate-700">
       <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual</button>
       <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada</button>
@@ -51,12 +46,23 @@
           <option value="">Carregando mapas...</option>
         </select>
         
-        <!-- Imagem do Mapa -->
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative">
           <img id="map-img" src="" class="w-full h-24 object-cover" alt="Mapa">
         </div>
-        
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Puxando Win Rates...</div>
+
+        <!-- Módulo de Estatística Pessoal (Supabase) -->
+        <div id="personal-stats" class="hidden mt-3 p-3 bg-slate-800/80 rounded-lg border border-slate-600">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-bold text-gray-300">Meu Desempenho (Este Mapa):</span>
+            <span id="my-wr-text" class="text-sm font-bold text-yellow-400">Calculando...</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="registerMatch('win')" class="flex-1 bg-green-600 hover:bg-green-500 p-1.5 rounded text-xs font-bold transition">+ Vitória</button>
+            <button onclick="registerMatch('loss')" class="flex-1 bg-red-600 hover:bg-red-500 p-1.5 rounded text-xs font-bold transition">- Derrota</button>
+          </div>
+        </div>
+
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Puxando Win Rates Globais...</div>
       </div>
 
       <!-- Área de Draft -->
@@ -65,7 +71,7 @@
           <label class="block text-sm font-bold mb-2 text-gray-300">2. Seu turno</label>
           <div class="flex gap-2">
             <button onclick="setTurn('first')" id="btn-first" class="flex-1 bg-blue-600 p-1.5 rounded text-sm font-bold opacity-50">1º Pick</button>
-            <button onclick="setTurn('mid')" id="btn-mid" class="flex-1 bg-purple-600 p-1.5 rounded text-sm font-bold opacity-50">2º/3º Pick</button>
+            <button onclick="setTurn('mid')" id="btn-mid" class="flex-1 bg-purple-600 p-1.5 rounded text-sm font-bold opacity-50">2º/3º</button>
             <button onclick="setTurn('last')" id="btn-last" class="flex-1 bg-red-600 p-1.5 rounded text-sm font-bold opacity-50">Last</button>
           </div>
         </div>
@@ -78,7 +84,6 @@
         </div>
       </div>
 
-      <!-- Resultados -->
       <div class="mt-4">
         <h2 class="text-lg font-bold mb-2 text-green-400 border-b border-green-800 pb-1">Melhores Picks:</h2>
         <div id="results" class="space-y-2"></div>
@@ -87,16 +92,21 @@
   </div>
 
   <script>
+    // --- CONFIGURAÇÃO SUPABASE ---
+    const SUPABASE_URL = 'https://innyffzronczhbcvnrxt.supabase.co/rest/v1/'; // Coloque aqui sua URL
+    const SUPABASE_KEY = 'sb_publishable_bmrm5I6No8mP_lfvRDCIaw_ohHnvev4'; // Coloque aqui sua chave
+    let supabase;
+    if (SUPABASE_URL !== 'https://innyffzronczhbcvnrxt.supabase.co/rest/v1/') {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+
     let state = {
       mode: 'ranked',
       mapId: null, turn: null, enemyPick: null, mapTopBrawlers: [],
-      allBrawlersList: [], // Puxado dinamicamente
-      activeEvents: [],    // Guarda os eventos para pegar a imagem
+      allBrawlersList: [], allMapsList: [],
       favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
-    // Base auxiliar para definir se o brawler é First Pick seguro ou Punição
-    // Brawlers não listados aqui assumem o papel genérico ("mid") e counters básicos.
     const brawlerKnowledge = {
       "Belle": { role: "safe", counters: ["Piper", "Nani", "Mortis", "Edgar"] },
       "Piper": { role: "safe", counters: ["Nani", "Mortis", "Mico", "Meg"] },
@@ -111,34 +121,49 @@
 
     async function initAPI() {
       try {
-        // 1. Puxa todos os Brawlers do jogo
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
         const brawlersData = await brawlersRes.json();
         state.allBrawlersList = brawlersData.list.map(b => b.name).sort();
-
-        // 2. Preenche select de inimigos e sidebar
         const enemySelect = document.getElementById('enemy-select');
         state.allBrawlersList.forEach(b => enemySelect.innerHTML += `<option value="${b}">${b}</option>`);
         renderFavoritesList();
 
-        // 3. Puxa os mapas ativos
-        const eventsRes = await fetch('https://api.brawlapi.com/v1/events');
-        const eventsData = await eventsRes.json();
-        state.activeEvents = eventsData.active.filter(ev => ev.map); // Previne crash se o mapa for null
+        // Faz chamadas simultâneas para garantir que sempre teremos mapas
+        const [eventsRes, mapsRes] = await Promise.all([
+          fetch('https://api.brawlapi.com/v1/events').catch(() => ({ json: () => ({ active: [] }) })),
+          fetch('https://api.brawlapi.com/v1/maps').catch(() => ({ json: () => ({ list: [] }) }))
+        ]);
         
+        const eventsData = await eventsRes.json();
+        const mapsData = await mapsRes.json();
+
+        state.allMapsList = mapsData.list || [];
+        
+        // Pega IDs seguros dos mapas ativos para dar destaque
+        const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => ev.map.id) : [];
+
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
-        state.activeEvents.forEach(ev => {
-          mapSelect.innerHTML += `<option value="${ev.map.id}">[${ev.map.gameMode.name}] ${ev.map.name}</option>`;
-        });
+
+        // Insere primeiro os Ao Vivo
+        const activeMaps = state.allMapsList.filter(m => activeMapIds.includes(m.id));
+        if(activeMaps.length > 0) {
+          mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora">`;
+          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
+          mapSelect.innerHTML += `</optgroup>`;
+        }
+
+        // Insere o resto
+        const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(m.id));
+        mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
+        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
+        mapSelect.innerHTML += `</optgroup>`;
 
         document.getElementById('api-status').innerText = '🟢 Ao Vivo';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
-        document.getElementById('api-status').classList.remove('animate-pulse');
       } catch (e) {
         document.getElementById('api-status').innerText = '🔴 Erro API';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
-        console.error(e);
       }
     }
 
@@ -146,17 +171,25 @@
       state.mapId = document.getElementById('map-select').value;
       const previewBox = document.getElementById('map-preview');
       const imgEl = document.getElementById('map-img');
+      const personalStatsBox = document.getElementById('personal-stats');
 
       if (!state.mapId) {
         previewBox.classList.add('hidden');
+        personalStatsBox.classList.add('hidden');
         return;
       }
 
-      // Atualiza a imagem
-      const selectedEvent = state.activeEvents.find(ev => ev.map.id == state.mapId);
-      if (selectedEvent && selectedEvent.map.environment.imageUrl) {
-        imgEl.src = selectedEvent.map.environment.imageUrl;
+      // Atualiza Imagem
+      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
+      if (selectedMap && selectedMap.environment.imageUrl) {
+        imgEl.src = selectedMap.environment.imageUrl;
         previewBox.classList.remove('hidden');
+      }
+      
+      // Exibe box de estatística pessoal se supabase configurado
+      if (supabase) {
+        personalStatsBox.classList.remove('hidden');
+        loadMyWinRate();
       }
 
       document.getElementById('map-loading').style.display = 'block';
@@ -167,7 +200,43 @@
       updateRecommendations();
     }
 
-    // --- CONTROLES DA INTERFACE ---
+    // --- FUNÇÕES SUPABASE (Banco de Dados) ---
+    async function registerMatch(result) {
+      if (!supabase) return alert("Configure suas chaves do Supabase no código!");
+      if (!state.mapId) return;
+
+      document.getElementById('my-wr-text').innerText = 'Salvando...';
+      const { error } = await supabase.from('brawl_matches').insert([{ 
+        map_id: parseInt(state.mapId), 
+        result: result 
+      }]);
+
+      if (error) {
+        console.error(error);
+        alert("Erro ao salvar partida.");
+      }
+      loadMyWinRate();
+    }
+
+    async function loadMyWinRate() {
+      if (!supabase || !state.mapId) return;
+      
+      const { data, error } = await supabase.from('brawl_matches').select('result').eq('map_id', parseInt(state.mapId));
+      if (error) return console.error(error);
+
+      if (data.length === 0) {
+        document.getElementById('my-wr-text').innerText = '0 Partidas';
+        return;
+      }
+
+      const wins = data.filter(d => d.result === 'win').length;
+      const wr = Math.round((wins / data.length) * 100);
+      
+      let colorClass = wr >= 50 ? 'text-green-400' : 'text-red-400';
+      document.getElementById('my-wr-text').innerHTML = `<span class="${colorClass}">${wr}%</span> <span class="text-gray-400 text-xs">(${wins}V/${data.length-wins}D)</span>`;
+    }
+
+    // --- CONTROLES INTERFACE E RECOMENDAÇÃO ---
     function setMode(mode) {
       state.mode = mode;
       document.getElementById('mode-casual').className = mode === 'casual' ? 'flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow' : 'flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400';
@@ -180,7 +249,6 @@
       state.turn = turn;
       ['first', 'mid', 'last'].forEach(t => document.getElementById(`btn-${t}`).style.opacity = '0.5');
       document.getElementById(`btn-${turn}`).style.opacity = '1';
-
       const eSec = document.getElementById('enemy-section');
       if (turn === 'first') {
         eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none';
@@ -191,50 +259,34 @@
       updateRecommendations();
     }
 
-    // --- FAVORITOS (Sidebar) ---
     function toggleSidebar() {
-      const sb = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      sb.classList.toggle('translate-x-full');
-      overlay.classList.toggle('hidden');
+      document.getElementById('sidebar').classList.toggle('translate-x-full');
+      document.getElementById('sidebar-overlay').classList.toggle('hidden');
     }
 
     function renderFavoritesList() {
       const list = document.getElementById('favorites-list');
       list.innerHTML = '';
-      
-      // Ordena: Favoritos primeiro, depois ordem alfabética
       const sortedBrawlers = [...state.allBrawlersList].sort((a, b) => {
-        const aFav = state.favorites.includes(a);
-        const bFav = state.favorites.includes(b);
+        const aFav = state.favorites.includes(a), bFav = state.favorites.includes(b);
         if (aFav && !bFav) return -1;
         if (!aFav && bFav) return 1;
         return a.localeCompare(b);
       });
-
       sortedBrawlers.forEach(b => {
         const isFav = state.favorites.includes(b);
-        list.innerHTML += `
-          <label class="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded cursor-pointer border-b border-slate-800">
-            <input type="checkbox" ${isFav ? 'checked' : ''} onchange="toggleFav('${b}')" class="w-4 h-4 accent-yellow-500">
-            <span class="${isFav ? 'text-yellow-400 font-bold' : 'text-gray-300'}">${b}</span>
-          </label>
-        `;
+        list.innerHTML += `<label class="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded cursor-pointer border-b border-slate-800"><input type="checkbox" ${isFav ? 'checked' : ''} onchange="toggleFav('${b}')" class="w-4 h-4 accent-yellow-500"><span class="${isFav ? 'text-yellow-400 font-bold' : 'text-gray-300'}">${b}</span></label>`;
       });
     }
 
     function toggleFav(brawler) {
-      if (state.favorites.includes(brawler)) {
-        state.favorites = state.favorites.filter(f => f !== brawler);
-      } else {
-        state.favorites.push(brawler);
-      }
+      if (state.favorites.includes(brawler)) state.favorites = state.favorites.filter(f => f !== brawler);
+      else state.favorites.push(brawler);
       localStorage.setItem('brawlFavorites', JSON.stringify(state.favorites));
       renderFavoritesList();
       updateRecommendations();
     }
 
-    // --- RECOMENDAÇÕES ---
     function updateRecommendations() {
       state.enemyPick = document.getElementById('enemy-select').value;
       const resDiv = document.getElementById('results');
@@ -254,17 +306,13 @@
         if (state.turn === 'last') candidatos.sort((a,b) => (a.role === 'punish' ? -1 : 1));
       }
 
-      // Ordena: Favoritos têm vantagem brutal na lista
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.winRate - a.winRate) : (b.isFav ? 1 : -1));
-
       const best = candidatos.slice(0, 4);
       if(best.length === 0) { resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum mapeado atende os filtros. Vá com seu favorito do mapa.</p>'; return; }
 
       best.forEach(b => {
         const counters = b.counters.slice(0,4).map(c => `<span class="bg-red-900 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
-        // Estrela em cima do nome se for favorito
         const starHtml = b.isFav ? `<div class="text-2xl drop-shadow-md mb-[-8px]">⭐</div>` : '';
-        
         resDiv.innerHTML += `
           <div class="glass p-2.5 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex flex-col relative overflow-hidden">
             ${starHtml}
