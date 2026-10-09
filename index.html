@@ -92,13 +92,10 @@
   </div>
 
   <script>
-    // --- CONFIGURAÇÃO SUPABASE ---
-    const SUPABASE_URL = 'https://innyffzronczhbcvnrxt.supabase.co/rest/v1/'; // Coloque aqui sua URL
-    const SUPABASE_KEY = 'sb_publishable_bmrm5I6No8mP_lfvRDCIaw_ohHnvev4'; // Coloque aqui sua chave
-    let supabase;
-    if (SUPABASE_URL !== 'https://innyffzronczhbcvnrxt.supabase.co/rest/v1/') {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
+    // --- CONFIGURAÇÃO SUPABASE DIRETA ---
+    const SUPABASE_URL = 'https://innyffzronczhbcvnrxt.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_bmrm5I6No8mP_lfvRDCIaw_ohHnvev4';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let state = {
       mode: 'ranked',
@@ -128,7 +125,6 @@
         state.allBrawlersList.forEach(b => enemySelect.innerHTML += `<option value="${b}">${b}</option>`);
         renderFavoritesList();
 
-        // Faz chamadas simultâneas para garantir que sempre teremos mapas
         const [eventsRes, mapsRes] = await Promise.all([
           fetch('https://api.brawlapi.com/v1/events').catch(() => ({ json: () => ({ active: [] }) })),
           fetch('https://api.brawlapi.com/v1/maps').catch(() => ({ json: () => ({ list: [] }) }))
@@ -139,13 +135,11 @@
 
         state.allMapsList = mapsData.list || [];
         
-        // Pega IDs seguros dos mapas ativos para dar destaque
         const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => ev.map.id) : [];
 
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
 
-        // Insere primeiro os Ao Vivo
         const activeMaps = state.allMapsList.filter(m => activeMapIds.includes(m.id));
         if(activeMaps.length > 0) {
           mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora">`;
@@ -153,7 +147,6 @@
           mapSelect.innerHTML += `</optgroup>`;
         }
 
-        // Insere o resto
         const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(m.id));
         mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
         otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
@@ -179,14 +172,12 @@
         return;
       }
 
-      // Atualiza Imagem
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
       if (selectedMap && selectedMap.environment.imageUrl) {
         imgEl.src = selectedMap.environment.imageUrl;
         previewBox.classList.remove('hidden');
       }
       
-      // Exibe box de estatística pessoal se supabase configurado
       if (supabase) {
         personalStatsBox.classList.remove('hidden');
         loadMyWinRate();
@@ -200,7 +191,6 @@
       updateRecommendations();
     }
 
-    // --- FUNÇÕES SUPABASE (Banco de Dados) ---
     async function registerMatch(result) {
       if (!supabase) return alert("Configure suas chaves do Supabase no código!");
       if (!state.mapId) return;
@@ -236,7 +226,6 @@
       document.getElementById('my-wr-text').innerHTML = `<span class="${colorClass}">${wr}%</span> <span class="text-gray-400 text-xs">(${wins}V/${data.length-wins}D)</span>`;
     }
 
-    // --- CONTROLES INTERFACE E RECOMENDAÇÃO ---
     function setMode(mode) {
       state.mode = mode;
       document.getElementById('mode-casual').className = mode === 'casual' ? 'flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow' : 'flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400';
