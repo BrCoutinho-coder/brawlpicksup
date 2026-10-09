@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Rápido</title>
+  <title>Brawl Draft Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
     .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
     #sidebar { transition: transform 0.3s ease-in-out; }
-    /* Scrollbar personalizada para as grades */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
     ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
@@ -17,7 +16,7 @@
 </head>
 <body class="min-h-screen flex flex-col items-center pb-8">
 
-  <!-- Aba Lateral de Favoritos (Agora visual) -->
+  <!-- Aba Lateral de Favoritos -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()"></div>
   <div id="sidebar" class="fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 z-50 transform translate-x-full p-4 overflow-hidden flex flex-col">
     <div class="flex justify-between items-center mb-4 shrink-0">
@@ -38,8 +37,8 @@
     </header>
 
     <div class="flex bg-slate-800 rounded-lg p-1 mb-4 border border-slate-700">
-      <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual</button>
-      <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada</button>
+      <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual (Rápido)</button>
+      <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada (Draft)</button>
     </div>
 
     <main class="space-y-4">
@@ -50,61 +49,72 @@
           <option value="">Carregando mapas...</option>
         </select>
         
-        <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative">
-          <img id="map-img" src="" class="w-full h-24 object-cover" alt="Mapa">
+        <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900">
+          <img id="map-img" src="" class="w-full h-24 object-cover opacity-80" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Puxando Win Rates Globais...</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando Win Rates...</div>
       </div>
 
       <!-- Área de Draft -->
       <div id="draft-area" class="space-y-4">
         <div class="glass p-4 rounded-xl">
-          <label class="block text-sm font-bold mb-2 text-gray-300">2. Seu turno</label>
+          <label class="block text-sm font-bold mb-2 text-gray-300">2. Qual o seu turno?</label>
           <div class="flex gap-2">
             <button onclick="setTurn('first')" id="btn-first" class="flex-1 bg-blue-600 p-1.5 rounded text-sm font-bold opacity-50">1º Pick</button>
-            <button onclick="setTurn('mid')" id="btn-mid" class="flex-1 bg-purple-600 p-1.5 rounded text-sm font-bold opacity-50">2º/3º</button>
-            <button onclick="setTurn('last')" id="btn-last" class="flex-1 bg-red-600 p-1.5 rounded text-sm font-bold opacity-50">Last</button>
+            <button onclick="setTurn('mid')" id="btn-mid" class="flex-1 bg-purple-600 p-1.5 rounded text-sm font-bold opacity-50">Meio (2º/3º/4º)</button>
+            <button onclick="setTurn('last')" id="btn-last" class="flex-1 bg-red-600 p-1.5 rounded text-sm font-bold opacity-50">Último</button>
           </div>
         </div>
 
-        <!-- 3. Pick Inimigo (Agora Visual) -->
+        <!-- 3. Picks Inimigos (MÚLTIPLOS) -->
         <div class="glass p-4 rounded-xl" id="enemy-section" style="opacity: 0.5; pointer-events: none;">
-          <label class="block text-sm font-bold mb-2 text-gray-300">3. Pick Inimigo</label>
+          <label class="block text-sm font-bold mb-2 text-gray-300">3. Picks da Equipe Inimiga</label>
           
-          <!-- Brawler Selecionado -->
-          <div id="selected-enemy" class="hidden items-center justify-between bg-red-950/40 p-2 rounded-lg border border-red-800 cursor-pointer mb-2" onclick="clearEnemy()">
-            <div class="flex items-center gap-2">
-              <img id="enemy-img-display" src="" class="w-8 h-8 rounded bg-slate-900">
-              <span id="enemy-name-display" class="font-bold text-white text-sm"></span>
-            </div>
-            <span class="text-[10px] text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">Trocar (X)</span>
+          <!-- Lista de inimigos selecionados -->
+          <div id="selected-enemies-container" class="flex flex-wrap gap-2 mb-3">
+            <!-- Preenchido via JS -->
           </div>
 
-          <!-- Grade de Seleção -->
           <div id="enemy-picker">
-            <input type="text" id="enemy-search" placeholder="Pesquisar brawler..." class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-2 text-sm" oninput="renderEnemyGrid(this.value)">
-            <div id="enemy-grid" class="grid grid-cols-5 gap-1.5 max-h-40 overflow-y-auto"></div>
+            <input type="text" id="enemy-search" placeholder="Buscar brawler inimigo..." class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-2 text-sm" oninput="renderEnemyGrid(this.value)">
+            <div id="enemy-grid" class="grid grid-cols-5 gap-1.5 max-h-40 overflow-y-auto p-1"></div>
           </div>
         </div>
       </div>
 
-      <!-- Resultados -->
       <div class="mt-4">
-        <h2 class="text-lg font-bold mb-2 text-green-400 border-b border-green-800 pb-1">Melhores Picks:</h2>
+        <h2 class="text-lg font-bold mb-2 text-green-400 border-b border-green-800 pb-1">Melhores Sugestões:</h2>
         <div id="results" class="space-y-2"></div>
       </div>
     </main>
   </div>
 
   <script>
+    const tradutorModos = {
+      "Bounty": "Caça-Estrelas",
+      "Brawl Ball": "Fute-Brawl",
+      "Gem Grab": "Pique-Gema",
+      "Heist": "Roubo",
+      "Hot Zone": "Zona Estratégica",
+      "Knockout": "Nocaute",
+      "Wipeout": "Extermínio",
+      "Showdown": "Combate",
+      "Solo Showdown": "Combate Solo",
+      "Duo Showdown": "Combate Duplo"
+    };
+
     let state = {
       mode: 'ranked',
-      mapId: null, turn: null, enemyPick: null, mapTopBrawlers: [],
-      allBrawlers: [], // Agora guarda objetos com {name, image}
+      mapId: null, turn: null, 
+      enemyPicks: [], // Agora é um array para múltiplos inimigos
+      mapTopBrawlers: [],
+      currentWinRates: {}, 
+      allBrawlers: [], 
       allMapsList: [],
       favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
+    // Matriz de conhecimento. Adicione seus counters manuais aqui se quiser forçar o sistema.
     const brawlerKnowledge = {
       "Belle": { role: "safe", counters: ["Piper", "Nani", "Mortis", "Edgar"] },
       "Piper": { role: "safe", counters: ["Nani", "Mortis", "Mico", "Meg"] },
@@ -117,12 +127,15 @@
       "Tick": { role: "punish", counters: ["Mortis", "Edgar", "Mico", "Lily"] }
     };
 
+    function translateMode(engMode) {
+      return tradutorModos[engMode] || engMode;
+    }
+
     async function initAPI() {
       try {
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
         const brawlersData = await brawlersRes.json();
         
-        // Salva nome e avatar
         state.allBrawlers = brawlersData.list.map(b => ({
           name: b.name,
           image: b.imageUrl2 || b.imageUrl
@@ -140,7 +153,14 @@
         const mapsData = await mapsRes.json();
 
         state.allMapsList = mapsData.list || [];
-        const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => ev.map.id) : [];
+        
+        // Pega os mapas ativos e corrige o acesso ao ID
+        const activeMapIds = [];
+        if (eventsData.active) {
+          eventsData.active.forEach(ev => {
+            if (ev.map && ev.map.id) activeMapIds.push(ev.map.id);
+          });
+        }
 
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
@@ -148,13 +168,13 @@
         const activeMaps = state.allMapsList.filter(m => activeMapIds.includes(m.id));
         if(activeMaps.length > 0) {
           mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora">`;
-          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
+          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${translateMode(m.gameMode.name)}] ${m.name}</option>`);
           mapSelect.innerHTML += `</optgroup>`;
         }
 
         const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(m.id));
         mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
-        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${m.gameMode.name}] ${m.name}</option>`);
+        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[${translateMode(m.gameMode.name)}] ${m.name}</option>`);
         mapSelect.innerHTML += `</optgroup>`;
 
         document.getElementById('api-status').innerText = '🟢 Ao Vivo';
@@ -177,15 +197,28 @@
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
       if (selectedMap && selectedMap.environment.imageUrl) {
+        imgEl.style.display = 'block'; // Reseta o display caso tenha dado erro antes
         imgEl.src = selectedMap.environment.imageUrl;
         previewBox.classList.remove('hidden');
+      } else {
+        previewBox.classList.add('hidden');
       }
       
       document.getElementById('map-loading').style.display = 'block';
       const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
       const data = await res.json();
-      state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate).slice(0, 20);
+      
+      state.currentWinRates = {};
+      data.stats.forEach(s => {
+        state.currentWinRates[s.brawler.name] = s.winRate;
+      });
+
+      state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate);
       document.getElementById('map-loading').style.display = 'none';
+      
+      renderEnemyGrid(document.getElementById('enemy-search').value || '');
+      renderFavoritesList(document.getElementById('fav-search').value || '');
+      
       updateRecommendations();
     }
 
@@ -205,52 +238,78 @@
       const eSec = document.getElementById('enemy-section');
       if (turn === 'first') {
         eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none';
-        clearEnemy();
+        state.enemyPicks = [];
+        renderSelectedEnemies();
       } else {
         eSec.style.opacity = '1'; eSec.style.pointerEvents = 'auto';
       }
       updateRecommendations();
     }
 
-    // --- NOVA LÓGICA DE INIMIGO VISUAL ---
+    // --- MÚLTIPLOS INIMIGOS ---
     function renderEnemyGrid(filter = '') {
       const grid = document.getElementById('enemy-grid');
       grid.innerHTML = '';
       
-      const filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()));
+      // Filtra pelo texto e remove os que já foram selecionados
+      let filtered = state.allBrawlers.filter(b => 
+        b.name.toLowerCase().includes(filter.toLowerCase()) && 
+        !state.enemyPicks.includes(b.name)
+      );
+      
+      filtered.sort((a, b) => {
+        const wrA = state.currentWinRates[a.name] || 0;
+        const wrB = state.currentWinRates[b.name] || 0;
+        if (wrB !== wrA) return wrB - wrA; 
+        return a.name.localeCompare(b.name);
+      });
       
       filtered.forEach(b => {
+        const wrTag = state.currentWinRates[b.name] ? `<div class="absolute bottom-0 bg-black/80 text-[8px] w-full text-center text-green-400">${state.currentWinRates[b.name]}%</div>` : '';
         grid.innerHTML += `
-          <img src="${b.image}" onclick="selectEnemy('${b.name}', '${b.image}')" 
-               class="w-full aspect-square object-cover rounded border border-slate-600 hover:border-yellow-400 cursor-pointer bg-slate-900" 
-               title="${b.name}" alt="${b.name}">
+          <div onclick="addEnemy('${b.name}', '${b.image}')" class="relative cursor-pointer hover:scale-105 transition rounded overflow-hidden">
+            <img src="${b.image}" class="w-full aspect-square object-cover bg-slate-900 border border-slate-600 hover:border-yellow-400" title="${b.name}" alt="${b.name}">
+            ${wrTag}
+          </div>
         `;
       });
     }
 
-    function selectEnemy(name, image) {
-      state.enemyPick = name;
-      document.getElementById('enemy-picker').classList.add('hidden');
-      document.getElementById('selected-enemy').classList.remove('hidden');
-      document.getElementById('selected-enemy').classList.add('flex');
-      
-      document.getElementById('enemy-name-display').innerText = name;
-      document.getElementById('enemy-img-display').src = image;
-      
+    function addEnemy(name, image) {
+      if (state.enemyPicks.length >= 5) return; // Limite de brawlers inimigos
+      state.enemyPicks.push(name);
       document.getElementById('enemy-search').value = '';
+      renderSelectedEnemies();
       renderEnemyGrid();
       updateRecommendations();
     }
 
-    function clearEnemy() {
-      state.enemyPick = null;
-      document.getElementById('selected-enemy').classList.add('hidden');
-      document.getElementById('selected-enemy').classList.remove('flex');
-      document.getElementById('enemy-picker').classList.remove('hidden');
+    function removeEnemy(name) {
+      state.enemyPicks = state.enemyPicks.filter(e => e !== name);
+      renderSelectedEnemies();
+      renderEnemyGrid();
       updateRecommendations();
     }
 
-    // --- FAVORITOS VISUAIS ---
+    function renderSelectedEnemies() {
+      const container = document.getElementById('selected-enemies-container');
+      container.innerHTML = '';
+      
+      state.enemyPicks.forEach(name => {
+        const bInfo = state.allBrawlers.find(b => b.name === name);
+        if (bInfo) {
+          container.innerHTML += `
+            <div class="flex items-center gap-1 bg-red-950/60 p-1 pr-2 rounded border border-red-900">
+              <img src="${bInfo.image}" class="w-6 h-6 rounded bg-slate-900">
+              <span class="text-xs font-bold text-white">${name}</span>
+              <button onclick="removeEnemy('${name}')" class="ml-1 text-red-500 hover:text-red-300 font-bold ml-2">X</button>
+            </div>
+          `;
+        }
+      });
+    }
+
+    // --- ABA DE FAVORITOS ---
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('translate-x-full');
       document.getElementById('sidebar-overlay').classList.toggle('hidden');
@@ -263,20 +322,28 @@
       let filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()));
       
       filtered.sort((a, b) => {
-        const aFav = state.favorites.includes(a.name), bFav = state.favorites.includes(b.name);
+        const aFav = state.favorites.includes(a.name);
+        const bFav = state.favorites.includes(b.name);
         if (aFav && !bFav) return -1;
         if (!aFav && bFav) return 1;
-        return 0;
+
+        const wrA = state.currentWinRates[a.name] || 0;
+        const wrB = state.currentWinRates[b.name] || 0;
+        if (wrB !== wrA) return wrB - wrA;
+
+        return a.name.localeCompare(b.name);
       });
 
       filtered.forEach(b => {
         const isFav = state.favorites.includes(b.name);
         const style = isFav ? 'border-2 border-yellow-400 opacity-100' : 'border border-slate-700 opacity-50 hover:opacity-100';
+        const wr = state.currentWinRates[b.name] ? `${state.currentWinRates[b.name]}%` : '';
         
         list.innerHTML += `
-          <div onclick="toggleFav('${b.name}')" class="cursor-pointer flex flex-col items-center gap-1">
+          <div onclick="toggleFav('${b.name}')" class="cursor-pointer flex flex-col items-center gap-1 relative">
             <img src="${b.image}" class="w-full aspect-square object-cover rounded-lg bg-slate-800 ${style}">
-            <span class="text-[10px] truncate w-full text-center ${isFav ? 'text-yellow-400 font-bold' : 'text-gray-400'}">${b.name}</span>
+            <span class="text-[9px] truncate w-full text-center ${isFav ? 'text-yellow-400 font-bold' : 'text-gray-400'}">${b.name}</span>
+            ${wr ? `<span class="absolute top-0 right-0 bg-black/80 text-green-400 text-[8px] px-1 rounded-bl-lg rounded-tr-lg">${wr}</span>` : ''}
           </div>
         `;
       });
@@ -293,17 +360,16 @@
       updateRecommendations();
     }
 
-    // --- RECOMENDAÇÕES COM IMAGEM ---
+    // --- RECOMENDAÇÕES (AGORA COM MÚLTIPLOS FILTROS) ---
     function updateRecommendations() {
       const resDiv = document.getElementById('results');
       resDiv.innerHTML = '';
 
-      if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa.</p>'; return; }
-      if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione seu turno.</p>'; return; }
+      if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
+      if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno (1º, Meio ou Último).</p>'; return; }
 
       let candidatos = state.mapTopBrawlers.map(apiB => {
-        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["Tanks", "Snipers", "Assassinos", "Throwers"] };
-        // Puxa a imagem da base geral para exibir no card
+        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["(Em estudo)"] };
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
         return { 
           name: apiB.brawler.name, 
@@ -315,18 +381,34 @@
       });
 
       if (state.mode === 'ranked') {
-        if (state.turn === 'first') candidatos = candidatos.filter(b => b.role === 'safe');
-        else if (state.enemyPick) candidatos = candidatos.filter(b => !b.counters.includes(state.enemyPick));
-        if (state.turn === 'last') candidatos.sort((a,b) => (a.role === 'punish' ? -1 : 1));
+        if (state.turn === 'first') {
+          candidatos = candidatos.filter(b => b.role === 'safe');
+        } else if (state.enemyPicks.length > 0) {
+          // Remove candidatos que apanham de *qualquer um* dos inimigos selecionados
+          candidatos = candidatos.filter(b => {
+            // Se o candidato tem fraqueza contra algum dos inimigos, ele é removido da lista
+            const temFraqueza = state.enemyPicks.some(inimigo => b.counters.includes(inimigo));
+            return !temFraqueza;
+          });
+        }
+        
+        if (state.turn === 'last') {
+          candidatos.sort((a,b) => (a.role === 'punish' ? -1 : 1));
+        }
       }
 
+      // Ordena por Favorito + Win Rate
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.winRate - a.winRate) : (b.isFav ? 1 : -1));
-      const best = candidatos.slice(0, 4);
       
-      if(best.length === 0) { resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum atende os filtros. Vá com seu favorito.</p>'; return; }
+      const best = candidatos.slice(0, 5); // Aumentado para 5 sugestões
+      
+      if(best.length === 0) { 
+        resDiv.innerHTML = '<p class="text-xs text-yellow-400 p-2 bg-yellow-900/30 rounded border border-yellow-800">Os inimigos cobriram todas as fraquezas mapeadas. Escolha o seu brawler de maior conforto neste mapa.</p>'; 
+        return; 
+      }
 
       best.forEach(b => {
-        const counters = b.counters.slice(0,4).map(c => `<span class="bg-red-900 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
+        const counters = b.counters.slice(0,4).map(c => `<span class="bg-red-900/80 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
         const starHtml = b.isFav ? `<div class="absolute -top-2 -left-2 text-xl drop-shadow-md z-20">⭐</div>` : '';
         
         resDiv.innerHTML += `
@@ -337,14 +419,15 @@
               <div class="flex-1">
                 <div class="flex justify-between items-center">
                   <span class="font-bold text-base text-white">${b.name}</span>
-                  <span class="text-[10px] bg-green-900 text-green-200 px-1.5 py-0.5 rounded border border-green-700">WR: ${b.winRate}%</span>
+                  <span class="text-[10px] bg-green-900 text-green-200 px-1.5 py-0.5 rounded border border-green-700 font-bold">Taxa de Vitória: ${b.winRate}%</span>
                 </div>
               </div>
             </div>
+            ${counters.length > 0 && counters !== '<span class="bg-red-900/80 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">(Em estudo)</span>' ? `
             <div class="bg-red-950/40 p-1.5 rounded">
               <p class="text-[9px] text-red-400 font-bold mb-1 uppercase">⚠️ Evite se eles tiverem:</p>
               <div class="flex flex-wrap">${counters}</div>
-            </div>
+            </div>` : ''}
           </div>
         `;
       });
