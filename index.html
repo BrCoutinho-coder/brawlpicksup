@@ -141,13 +141,28 @@
   <div id="debug-terminal" class="w-full fixed bottom-0 left-0 z-50"></div>
 
   <script>
+    // --- MOTOR DE CONEXÃO BLINDADO (Anti-CORS e Anti-Cache) ---
+    async function fetchGarantido(url, tentativas = 3) {
+      // Adiciona um timestamp na URL para o navegador nunca puxar do cache, sem usar headers complexos
+      const cacheBuster = url.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`;
+      for (let i = 0; i < tentativas; i++) {
+        try {
+          const res = await fetch(url + cacheBuster);
+          if (!res.ok) throw new Error(`Erro no servidor: ${res.status}`);
+          return await res.json();
+        } catch (e) {
+          if (i === tentativas - 1) throw e;
+          await new Promise(resolve => setTimeout(resolve, 800)); // Espera quase 1 seg e tenta de novo
+        }
+      }
+    }
+
     function logDebug(msg, type='info') {
       const term = document.getElementById('debug-terminal');
       const time = new Date().toLocaleTimeString();
       let color = '#0f0';
       if(type==='error') color = '#f00';
       if(type==='warn') color = '#ff0';
-      
       term.innerHTML = `<p style="color: ${color}">[${time}] ${msg}</p>` + term.innerHTML;
     }
 
@@ -168,11 +183,13 @@
 
     // DNA DO MAPA (Inteligência Offline para quando a API de Win Rate falhar)
     const mapDNA = {
-      "Snake Prairie": { type: "bush", boost: ["Tank", "Assassin"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara"] },
+      "Snake Prairie": { type: "bush", boost: ["Tank", "Assassin"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky"] },
       "Cavern Churn": { type: "bush_walls", boost: ["Artillery", "Tank"], punish: ["Marksman"] },
       "Shooting Star": { type: "open", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"] },
       "Out in the Open": { type: "open", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"] },
-      "Ring of Fire": { type: "choke", boost: ["Controller", "Artillery"], punish: ["Assassin"] }
+      "Ring of Fire": { type: "choke", boost: ["Controller", "Artillery"], punish: ["Assassin"] },
+      "Hard Rock Mine": { type: "mixed", boost: ["Controller", "Damage Dealer"], punish: [] },
+      "Crystal Arcade": { type: "mixed", boost: ["Marksman", "Assassin"], punish: ["Tank"] }
     };
 
     const tradutorModos = { "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo" };
@@ -196,8 +213,7 @@
     async function initAPI() {
       logDebug("Iniciando requisição de Brawlers...");
       try {
-        const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
-        const brawlersData = await brawlersRes.json();
+        const brawlersData = await fetchGarantido('https://api.brawlapi.com/v1/brawlers');
         logDebug(`Carregados ${brawlersData.list.length} Brawlers.`);
         
         state.allBrawlers = brawlersData.list.map(b => ({
@@ -213,18 +229,15 @@
         renderFavoritesList();
 
         logDebug("Buscando eventos e mapas ao vivo...");
-        const [eventsRes, mapsRes] = await Promise.all([
-          fetch('https://api.brawlapi.com/v1/events').catch(() => ({ json: () => ({ active: [] }) })),
-          fetch('https://api.brawlapi.com/v1/maps').catch(() => ({ json: () => ({ list: [] }) }))
+        const [eventsData, mapsData] = await Promise.all([
+          fetchGarantido('https://api.brawlapi.com/v1/events').catch(() => ({ active: [] })),
+          fetchGarantido('https://api.brawlapi.com/v1/maps').catch(() => ({ list: [] }))
         ]);
-        
-        const eventsData = await eventsRes.json();
-        const mapsData = await mapsRes.json();
 
         state.allMapsList = mapsData.list || [];
         
         const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => Number(ev.map.id)) : [];
-        logDebug(`Mapas Ativos detectados: ${activeMapIds.length}`);
+        logDebug(`Mapas Ativos detectados pela API: ${activeMapIds.length}`);
 
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
@@ -241,12 +254,14 @@
         otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
         mapSelect.innerHTML += `</optgroup>`;
 
-        document.getElementById('api-status').innerText = '🟢 Ao Vivo';
+        document.getElementById('api-status').innerText = '🟢 Conectado';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
+        document.getElementById('api-status').classList.remove('animate-pulse');
       } catch (e) {
         logDebug(`Erro crítico de API: ${e.message}`, 'error');
         document.getElementById('api-status').innerText = '🔴 Erro API';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
+        document.getElementById('api-status').classList.remove('animate-pulse');
       }
     }
 
@@ -269,8 +284,7 @@
       }
       
       document.getElementById('map-loading').style.display = 'block';
-      const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
-      const data = await res.json();
+      const data = await fetchGarantido(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
       
       state.currentWinRates = {};
       state.isOfflineFallback = false;
@@ -395,7 +409,6 @@
       gear1.classList.add('hidden'); gear2.classList.add('hidden');
       
       if (bInfo.gears && bInfo.gears.length >= 2) {
-        // Prioriza as engrenagens Míticas(5) e Épicas(4), senão pega Dano/Escudo/Velocidade
         let sortedGears = [...bInfo.gears].sort((a, b) => {
           if(a.level !== b.level) return b.level - a.level;
           return a.name.localeCompare(b.name);
@@ -461,17 +474,16 @@
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
-      const dna = mapDNA[selectedMap?.name]; // Pega o DNA do mapa, se existir
+      const dna = mapDNA[selectedMap?.name]; 
 
       let candidatos = state.mapTopBrawlers.map(apiB => {
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
-        let scoreFinal = apiB.winRate; // Base é Win Rate (ou 50 se a API falhou)
+        let scoreFinal = apiB.winRate; 
 
-        // Se a API caiu (Offline Fallback), injetamos o DNA do Mapa no Score
         if (state.isOfflineFallback && dna && bInfo) {
-          if (dna.boost.includes(bInfo.className)) scoreFinal += 20; // +20 pontos se a classe for boa pro mapa
-          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) scoreFinal += 25; // Brawlers chaves do mapa
-          if (dna.punish.includes(bInfo.className)) scoreFinal -= 30; // Punição severa (ex: Sniper na Moita)
+          if (dna.boost.includes(bInfo.className)) scoreFinal += 20; 
+          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) scoreFinal += 25; 
+          if (dna.punish.includes(bInfo.className)) scoreFinal -= 30; 
         }
 
         return { 
@@ -485,23 +497,21 @@
       if (state.mode === 'ranked') {
         candidatos = candidatos.filter(b => !state.enemyPicks.includes(b.name));
         
-        // Ajusta pelo Pedra/Papel/Tesoura das classes inimigas
         if (state.turn === 'mid' || state.turn === 'last') {
           candidatos.forEach(c => {
             state.enemyPicks.forEach(enemyName => {
               const enemyClass = state.allBrawlers.find(e => e.name === enemyName)?.className;
               if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) {
-                c.score += state.isOfflineFallback ? 15 : 2; // Peso maior se offline
+                c.score += state.isOfflineFallback ? 15 : 2; 
               }
               if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) {
-                c.score -= state.isOfflineFallback ? 20 : 5; // Punição pesada
+                c.score -= state.isOfflineFallback ? 20 : 5; 
               }
             });
           });
         }
       }
 
-      // Ordena por Score, garantindo que favoritos empatados subam
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.score - a.score) : (b.isFav ? 1 : -1));
       
       const best = candidatos.slice(0, 5);
