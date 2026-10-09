@@ -3,25 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Ao Vivo & DB</title>
+  <title>Brawl Draft Pro - Rápido</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SUPABASE CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
     .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
     #sidebar { transition: transform 0.3s ease-in-out; }
+    /* Scrollbar personalizada para as grades */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col items-center">
+<body class="min-h-screen flex flex-col items-center pb-8">
 
+  <!-- Aba Lateral de Favoritos (Agora visual) -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()"></div>
-  <div id="sidebar" class="fixed top-0 right-0 h-full w-64 bg-slate-900 border-l border-slate-700 z-50 transform translate-x-full p-4 overflow-y-auto">
-    <div class="flex justify-between items-center mb-4">
+  <div id="sidebar" class="fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 z-50 transform translate-x-full p-4 overflow-hidden flex flex-col">
+    <div class="flex justify-between items-center mb-4 shrink-0">
       <h2 class="font-bold text-yellow-400">Meus Brawlers</h2>
       <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white text-xl">&times;</button>
     </div>
-    <div id="favorites-list" class="space-y-1 flex flex-col text-sm"></div>
+    <input type="text" id="fav-search" placeholder="Buscar..." class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-3 text-sm shrink-0" oninput="renderFavoritesList(this.value)">
+    <div id="favorites-list" class="grid grid-cols-4 gap-2 overflow-y-auto pb-4"></div>
   </div>
 
   <div class="w-full max-w-md p-4">
@@ -49,19 +53,6 @@
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative">
           <img id="map-img" src="" class="w-full h-24 object-cover" alt="Mapa">
         </div>
-
-        <!-- Módulo de Estatística Pessoal (Supabase) -->
-        <div id="personal-stats" class="hidden mt-3 p-3 bg-slate-800/80 rounded-lg border border-slate-600">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-xs font-bold text-gray-300">Meu Desempenho (Este Mapa):</span>
-            <span id="my-wr-text" class="text-sm font-bold text-yellow-400">Calculando...</span>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="registerMatch('win')" class="flex-1 bg-green-600 hover:bg-green-500 p-1.5 rounded text-xs font-bold transition">+ Vitória</button>
-            <button onclick="registerMatch('loss')" class="flex-1 bg-red-600 hover:bg-red-500 p-1.5 rounded text-xs font-bold transition">- Derrota</button>
-          </div>
-        </div>
-
         <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Puxando Win Rates Globais...</div>
       </div>
 
@@ -76,14 +67,28 @@
           </div>
         </div>
 
+        <!-- 3. Pick Inimigo (Agora Visual) -->
         <div class="glass p-4 rounded-xl" id="enemy-section" style="opacity: 0.5; pointer-events: none;">
           <label class="block text-sm font-bold mb-2 text-gray-300">3. Pick Inimigo</label>
-          <select id="enemy-select" class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 text-sm" onchange="updateRecommendations()">
-            <option value="">Nenhum...</option>
-          </select>
+          
+          <!-- Brawler Selecionado -->
+          <div id="selected-enemy" class="hidden items-center justify-between bg-red-950/40 p-2 rounded-lg border border-red-800 cursor-pointer mb-2" onclick="clearEnemy()">
+            <div class="flex items-center gap-2">
+              <img id="enemy-img-display" src="" class="w-8 h-8 rounded bg-slate-900">
+              <span id="enemy-name-display" class="font-bold text-white text-sm"></span>
+            </div>
+            <span class="text-[10px] text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">Trocar (X)</span>
+          </div>
+
+          <!-- Grade de Seleção -->
+          <div id="enemy-picker">
+            <input type="text" id="enemy-search" placeholder="Pesquisar brawler..." class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-2 text-sm" oninput="renderEnemyGrid(this.value)">
+            <div id="enemy-grid" class="grid grid-cols-5 gap-1.5 max-h-40 overflow-y-auto"></div>
+          </div>
         </div>
       </div>
 
+      <!-- Resultados -->
       <div class="mt-4">
         <h2 class="text-lg font-bold mb-2 text-green-400 border-b border-green-800 pb-1">Melhores Picks:</h2>
         <div id="results" class="space-y-2"></div>
@@ -92,15 +97,11 @@
   </div>
 
   <script>
-    // --- CONFIGURAÇÃO SUPABASE DIRETA ---
-    const SUPABASE_URL = 'https://innyffzronczhbcvnrxt.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_bmrm5I6No8mP_lfvRDCIaw_ohHnvev4';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     let state = {
       mode: 'ranked',
       mapId: null, turn: null, enemyPick: null, mapTopBrawlers: [],
-      allBrawlersList: [], allMapsList: [],
+      allBrawlers: [], // Agora guarda objetos com {name, image}
+      allMapsList: [],
       favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
@@ -120,9 +121,14 @@
       try {
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
         const brawlersData = await brawlersRes.json();
-        state.allBrawlersList = brawlersData.list.map(b => b.name).sort();
-        const enemySelect = document.getElementById('enemy-select');
-        state.allBrawlersList.forEach(b => enemySelect.innerHTML += `<option value="${b}">${b}</option>`);
+        
+        // Salva nome e avatar
+        state.allBrawlers = brawlersData.list.map(b => ({
+          name: b.name,
+          image: b.imageUrl2 || b.imageUrl
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        renderEnemyGrid();
         renderFavoritesList();
 
         const [eventsRes, mapsRes] = await Promise.all([
@@ -134,7 +140,6 @@
         const mapsData = await mapsRes.json();
 
         state.allMapsList = mapsData.list || [];
-        
         const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => ev.map.id) : [];
 
         const mapSelect = document.getElementById('map-select');
@@ -164,11 +169,9 @@
       state.mapId = document.getElementById('map-select').value;
       const previewBox = document.getElementById('map-preview');
       const imgEl = document.getElementById('map-img');
-      const personalStatsBox = document.getElementById('personal-stats');
 
       if (!state.mapId) {
         previewBox.classList.add('hidden');
-        personalStatsBox.classList.add('hidden');
         return;
       }
 
@@ -178,52 +181,12 @@
         previewBox.classList.remove('hidden');
       }
       
-      if (supabase) {
-        personalStatsBox.classList.remove('hidden');
-        loadMyWinRate();
-      }
-
       document.getElementById('map-loading').style.display = 'block';
       const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
       const data = await res.json();
       state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate).slice(0, 20);
       document.getElementById('map-loading').style.display = 'none';
       updateRecommendations();
-    }
-
-    async function registerMatch(result) {
-      if (!supabase) return alert("Configure suas chaves do Supabase no código!");
-      if (!state.mapId) return;
-
-      document.getElementById('my-wr-text').innerText = 'Salvando...';
-      const { error } = await supabase.from('brawl_matches').insert([{ 
-        map_id: parseInt(state.mapId), 
-        result: result 
-      }]);
-
-      if (error) {
-        console.error(error);
-        alert("Erro ao salvar partida.");
-      }
-      loadMyWinRate();
-    }
-
-    async function loadMyWinRate() {
-      if (!supabase || !state.mapId) return;
-      
-      const { data, error } = await supabase.from('brawl_matches').select('result').eq('map_id', parseInt(state.mapId));
-      if (error) return console.error(error);
-
-      if (data.length === 0) {
-        document.getElementById('my-wr-text').innerText = '0 Partidas';
-        return;
-      }
-
-      const wins = data.filter(d => d.result === 'win').length;
-      const wr = Math.round((wins / data.length) * 100);
-      
-      let colorClass = wr >= 50 ? 'text-green-400' : 'text-red-400';
-      document.getElementById('my-wr-text').innerHTML = `<span class="${colorClass}">${wr}%</span> <span class="text-gray-400 text-xs">(${wins}V/${data.length-wins}D)</span>`;
     }
 
     function setMode(mode) {
@@ -238,46 +201,100 @@
       state.turn = turn;
       ['first', 'mid', 'last'].forEach(t => document.getElementById(`btn-${t}`).style.opacity = '0.5');
       document.getElementById(`btn-${turn}`).style.opacity = '1';
+      
       const eSec = document.getElementById('enemy-section');
       if (turn === 'first') {
         eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none';
-        state.enemyPick = null; document.getElementById('enemy-select').value = "";
+        clearEnemy();
       } else {
         eSec.style.opacity = '1'; eSec.style.pointerEvents = 'auto';
       }
       updateRecommendations();
     }
 
+    // --- NOVA LÓGICA DE INIMIGO VISUAL ---
+    function renderEnemyGrid(filter = '') {
+      const grid = document.getElementById('enemy-grid');
+      grid.innerHTML = '';
+      
+      const filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()));
+      
+      filtered.forEach(b => {
+        grid.innerHTML += `
+          <img src="${b.image}" onclick="selectEnemy('${b.name}', '${b.image}')" 
+               class="w-full aspect-square object-cover rounded border border-slate-600 hover:border-yellow-400 cursor-pointer bg-slate-900" 
+               title="${b.name}" alt="${b.name}">
+        `;
+      });
+    }
+
+    function selectEnemy(name, image) {
+      state.enemyPick = name;
+      document.getElementById('enemy-picker').classList.add('hidden');
+      document.getElementById('selected-enemy').classList.remove('hidden');
+      document.getElementById('selected-enemy').classList.add('flex');
+      
+      document.getElementById('enemy-name-display').innerText = name;
+      document.getElementById('enemy-img-display').src = image;
+      
+      document.getElementById('enemy-search').value = '';
+      renderEnemyGrid();
+      updateRecommendations();
+    }
+
+    function clearEnemy() {
+      state.enemyPick = null;
+      document.getElementById('selected-enemy').classList.add('hidden');
+      document.getElementById('selected-enemy').classList.remove('flex');
+      document.getElementById('enemy-picker').classList.remove('hidden');
+      updateRecommendations();
+    }
+
+    // --- FAVORITOS VISUAIS ---
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('translate-x-full');
       document.getElementById('sidebar-overlay').classList.toggle('hidden');
     }
 
-    function renderFavoritesList() {
+    function renderFavoritesList(filter = '') {
       const list = document.getElementById('favorites-list');
       list.innerHTML = '';
-      const sortedBrawlers = [...state.allBrawlersList].sort((a, b) => {
-        const aFav = state.favorites.includes(a), bFav = state.favorites.includes(b);
+      
+      let filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()));
+      
+      filtered.sort((a, b) => {
+        const aFav = state.favorites.includes(a.name), bFav = state.favorites.includes(b.name);
         if (aFav && !bFav) return -1;
         if (!aFav && bFav) return 1;
-        return a.localeCompare(b);
+        return 0;
       });
-      sortedBrawlers.forEach(b => {
-        const isFav = state.favorites.includes(b);
-        list.innerHTML += `<label class="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded cursor-pointer border-b border-slate-800"><input type="checkbox" ${isFav ? 'checked' : ''} onchange="toggleFav('${b}')" class="w-4 h-4 accent-yellow-500"><span class="${isFav ? 'text-yellow-400 font-bold' : 'text-gray-300'}">${b}</span></label>`;
+
+      filtered.forEach(b => {
+        const isFav = state.favorites.includes(b.name);
+        const style = isFav ? 'border-2 border-yellow-400 opacity-100' : 'border border-slate-700 opacity-50 hover:opacity-100';
+        
+        list.innerHTML += `
+          <div onclick="toggleFav('${b.name}')" class="cursor-pointer flex flex-col items-center gap-1">
+            <img src="${b.image}" class="w-full aspect-square object-cover rounded-lg bg-slate-800 ${style}">
+            <span class="text-[10px] truncate w-full text-center ${isFav ? 'text-yellow-400 font-bold' : 'text-gray-400'}">${b.name}</span>
+          </div>
+        `;
       });
     }
 
-    function toggleFav(brawler) {
-      if (state.favorites.includes(brawler)) state.favorites = state.favorites.filter(f => f !== brawler);
-      else state.favorites.push(brawler);
+    function toggleFav(brawlerName) {
+      if (state.favorites.includes(brawlerName)) {
+        state.favorites = state.favorites.filter(f => f !== brawlerName);
+      } else {
+        state.favorites.push(brawlerName);
+      }
       localStorage.setItem('brawlFavorites', JSON.stringify(state.favorites));
-      renderFavoritesList();
+      renderFavoritesList(document.getElementById('fav-search').value);
       updateRecommendations();
     }
 
+    // --- RECOMENDAÇÕES COM IMAGEM ---
     function updateRecommendations() {
-      state.enemyPick = document.getElementById('enemy-select').value;
       const resDiv = document.getElementById('results');
       resDiv.innerHTML = '';
 
@@ -285,8 +302,16 @@
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione seu turno.</p>'; return; }
 
       let candidatos = state.mapTopBrawlers.map(apiB => {
-        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["Tanks", "Snipers", "Assassinos", "Spawners"] };
-        return { name: apiB.brawler.name, winRate: apiB.winRate, isFav: state.favorites.includes(apiB.brawler.name), ...know };
+        let know = brawlerKnowledge[apiB.brawler.name] || { role: "mid", counters: ["Tanks", "Snipers", "Assassinos", "Throwers"] };
+        // Puxa a imagem da base geral para exibir no card
+        let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
+        return { 
+          name: apiB.brawler.name, 
+          image: bInfo ? bInfo.image : '',
+          winRate: apiB.winRate, 
+          isFav: state.favorites.includes(apiB.brawler.name), 
+          ...know 
+        };
       });
 
       if (state.mode === 'ranked') {
@@ -297,20 +322,27 @@
 
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.winRate - a.winRate) : (b.isFav ? 1 : -1));
       const best = candidatos.slice(0, 4);
-      if(best.length === 0) { resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum mapeado atende os filtros. Vá com seu favorito do mapa.</p>'; return; }
+      
+      if(best.length === 0) { resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum atende os filtros. Vá com seu favorito.</p>'; return; }
 
       best.forEach(b => {
         const counters = b.counters.slice(0,4).map(c => `<span class="bg-red-900 text-[9px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 whitespace-nowrap">${c}</span>`).join('');
-        const starHtml = b.isFav ? `<div class="text-2xl drop-shadow-md mb-[-8px]">⭐</div>` : '';
+        const starHtml = b.isFav ? `<div class="absolute -top-2 -left-2 text-xl drop-shadow-md z-20">⭐</div>` : '';
+        
         resDiv.innerHTML += `
-          <div class="glass p-2.5 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex flex-col relative overflow-hidden">
+          <div class="glass p-2 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex flex-col relative">
             ${starHtml}
-            <div class="flex justify-between items-end mb-1.5 z-10 pt-2">
-              <span class="font-bold text-lg text-white leading-none">${b.name}</span>
-              <span class="text-[10px] bg-green-900 text-green-200 px-1.5 py-0.5 rounded border border-green-700">WR: ${b.winRate}%</span>
+            <div class="flex items-center gap-3 mb-2">
+              <img src="${b.image}" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg">
+              <div class="flex-1">
+                <div class="flex justify-between items-center">
+                  <span class="font-bold text-base text-white">${b.name}</span>
+                  <span class="text-[10px] bg-green-900 text-green-200 px-1.5 py-0.5 rounded border border-green-700">WR: ${b.winRate}%</span>
+                </div>
+              </div>
             </div>
-            <div class="bg-red-950/40 p-1.5 rounded z-10">
-              <p class="text-[10px] text-red-400 font-bold mb-1">⚠️ Sofre para:</p>
+            <div class="bg-red-950/40 p-1.5 rounded">
+              <p class="text-[9px] text-red-400 font-bold mb-1 uppercase">⚠️ Evite se eles tiverem:</p>
               <div class="flex flex-wrap">${counters}</div>
             </div>
           </div>
