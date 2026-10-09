@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Tático & Debug</title>
+  <title>Brawl Draft Pro - Tático & Offline</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -12,9 +12,13 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
     ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    
+    /* Terminal de Debug */
+    #debug-terminal { display: none; background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-top: 2px solid #333; max-height: 200px; overflow-y: auto; }
+    #debug-terminal p { margin: 2px 0; border-bottom: 1px dashed #111; padding-bottom: 2px; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col items-center pb-16 relative">
+<body class="min-h-screen flex flex-col items-center pb-12">
 
   <!-- Aba Lateral de Favoritos -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()"></div>
@@ -45,14 +49,14 @@
       <!-- 1. Mapa -->
       <div class="glass p-4 rounded-xl">
         <label class="block text-sm font-bold mb-2 text-gray-300">1. Rotação Atual</label>
-        <select id="map-select" class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-1 text-sm font-semibold" onchange="fetchMapStats()">
+        <select id="map-select" class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-1 text-sm" onchange="fetchMapStats()">
           <option value="">Carregando mapas...</option>
         </select>
         
-        <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center p-2">
+        <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
           <img id="map-img" src="" class="h-32 object-contain" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Sincronizando estatísticas...</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando dados...</div>
       </div>
 
       <div id="draft-area" class="space-y-4">
@@ -84,56 +88,75 @@
             <h3 class="text-xs text-green-400 font-bold uppercase tracking-wider">Sua Escolha Travada</h3>
             <span id="locked-name" class="text-xl font-bold text-white"></span>
           </div>
-          <button onclick="unlockPick()" class="text-[10px] bg-slate-700 px-2 py-1 rounded hover:bg-slate-600 border border-slate-500">Trocar Brawler</button>
+          <button onclick="unlockPick()" class="text-[10px] bg-slate-700 px-2 py-1 rounded hover:bg-slate-600">Trocar</button>
         </div>
         
         <div class="flex gap-4">
-          <img id="locked-img" src="" class="w-16 h-16 rounded-lg border border-slate-500 bg-slate-900 shadow-lg object-cover">
+          <img id="locked-img" src="" class="w-16 h-16 rounded-lg border border-slate-500 bg-slate-900 shadow-lg">
+          
           <div class="flex-1 space-y-2">
-            <!-- BUILD IDEAL -->
+            <!-- BUILD IDEAL (Gadget, Star Power e Gears) -->
             <div class="bg-slate-800/80 p-2 rounded border border-slate-600">
-              <p class="text-[10px] text-gray-400 font-bold mb-1">Build Recomendada (API):</p>
+              <p class="text-[10px] text-gray-400 font-bold mb-1">Build Recomendada:</p>
+              
               <div class="flex items-center gap-2 mb-1">
-                <img id="locked-gadget-img" src="" class="w-4 h-4 rounded-full bg-black object-cover">
-                <span id="locked-gadget-name" class="text-[9px] text-white truncate"></span>
+                <img id="locked-gadget-img" src="" class="w-4 h-4 rounded-full bg-black">
+                <span id="locked-gadget-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
               </div>
-              <div class="flex items-center gap-2">
-                <img id="locked-sp-img" src="" class="w-4 h-4 rounded-full bg-black object-cover">
-                <span id="locked-sp-name" class="text-[9px] text-white truncate"></span>
+              
+              <div class="flex items-center gap-2 mb-2">
+                <img id="locked-sp-img" src="" class="w-4 h-4 rounded-full bg-black">
+                <span id="locked-sp-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
               </div>
+
+              <!-- Engrenagens -->
+              <div class="flex items-center gap-2 border-t border-slate-600 pt-1">
+                <span class="text-[8px] text-gray-500 font-bold uppercase">Gears:</span>
+                <img id="locked-gear1-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden">
+                <img id="locked-gear2-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden">
+              </div>
+
             </div>
           </div>
         </div>
+
         <!-- ALVOS -->
         <div id="locked-targets" class="mt-3 space-y-1"></div>
       </div>
 
       <!-- SUGESTÕES LIVRES -->
       <div id="suggestions-area" class="mt-4">
-        <h2 class="text-lg font-bold mb-2 text-green-400 border-b border-green-800 pb-1 flex justify-between items-center">
-          Sugestões de Pick:
-          <span id="sugg-badge" class="text-[9px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-normal">Aguardando</span>
-        </h2>
+        <div class="flex justify-between items-end mb-2 border-b border-green-800 pb-1">
+          <h2 class="text-lg font-bold text-green-400">Sugestões de Pick:</h2>
+          <span id="fallback-badge" class="hidden text-[8px] bg-purple-900 text-purple-300 px-1.5 py-0.5 rounded border border-purple-700">Tática Pura (Sem Dados do Mapa)</span>
+        </div>
         <p class="text-[10px] text-gray-400 mb-2">Clique em um brawler para travar sua escolha e ver seus alvos.</p>
         <div id="results" class="space-y-2"></div>
       </div>
+
     </main>
   </div>
 
-  <!-- RAIO X (DEBUG PANEL) -->
-  <button onclick="toggleXray()" class="fixed bottom-4 right-4 bg-slate-800 text-slate-400 border border-slate-600 rounded-full px-4 py-2 text-xs font-bold hover:bg-slate-700 hover:text-white transition z-50">
-    🔍 Raio-X
-  </button>
-
-  <div id="xray-panel" class="fixed bottom-0 left-0 w-full h-1/2 bg-black/95 border-t border-slate-600 z-50 transform translate-y-full transition-transform p-4 overflow-y-auto text-[10px] font-mono text-green-400">
-    <div class="flex justify-between items-center mb-2 border-b border-green-800 pb-2">
-      <h3 class="font-bold text-sm text-green-500">Terminal de Debug (API)</h3>
-      <button onclick="toggleXray()" class="text-white text-lg bg-red-600 rounded px-2">X</button>
-    </div>
-    <pre id="xray-log" class="whitespace-pre-wrap word-break"></pre>
-  </div>
+  <button onclick="toggleDebug()" class="fixed bottom-2 right-2 bg-slate-800 text-gray-500 text-[10px] px-2 py-1 rounded border border-slate-600 hover:text-white z-40">Raio-X (Debug)</button>
+  <div id="debug-terminal" class="w-full fixed bottom-0 left-0 z-50"></div>
 
   <script>
+    function logDebug(msg, type='info') {
+      const term = document.getElementById('debug-terminal');
+      const time = new Date().toLocaleTimeString();
+      let color = '#0f0';
+      if(type==='error') color = '#f00';
+      if(type==='warn') color = '#ff0';
+      
+      term.innerHTML = `<p style="color: ${color}">[${time}] ${msg}</p>` + term.innerHTML;
+    }
+
+    function toggleDebug() {
+      const term = document.getElementById('debug-terminal');
+      term.style.display = term.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // Matriz de Classes (Pedra, Papel e Tesoura)
     const classAdvantages = {
       "Assassin": ["Artillery", "Marksman"],
       "Tank": ["Assassin"],
@@ -143,45 +166,24 @@
       "Damage Dealer": ["Tank", "Assassin"]
     };
 
-    const tradutorModos = { 
-      "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", 
-      "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", 
-      "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo" 
+    // DNA DO MAPA (Inteligência Offline para quando a API de Win Rate falhar)
+    const mapDNA = {
+      "Snake Prairie": { type: "bush", boost: ["Tank", "Assassin"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara"] },
+      "Cavern Churn": { type: "bush_walls", boost: ["Artillery", "Tank"], punish: ["Marksman"] },
+      "Shooting Star": { type: "open", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"] },
+      "Out in the Open": { type: "open", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"] },
+      "Ring of Fire": { type: "choke", boost: ["Controller", "Artillery"], punish: ["Assassin"] }
     };
-    
-    // Tradutor de mapas expandido
-    const tradutorMapas = { 
-      "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Temple Ruins": "Ruínas do Templo", 
-      "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca", 
-      "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto", 
-      "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada", 
-      "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central", 
-      "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura", 
-      "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes", 
-      "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm", 
-      "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva", 
-      "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central", "Stone Fort": "Forte de Pedra",
-      "Canal Grande": "Canal Grande", "Excel": "Excel", "Rustic Arcade": "Fliperama Rústico", "Hideout": "Esconderijo"
-    };
+
+    const tradutorModos = { "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo" };
+    const tradutorMapas = { "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Temple Ruins": "Ruínas do Templo", "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca", "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto", "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada", "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central", "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura", "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes", "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm", "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva", "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central", "Stone Fort": "Forte de Pedra" };
 
     let state = {
       mode: 'ranked', mapId: null, turn: null, enemyPicks: [], myPick: null, 
       mapTopBrawlers: [], currentWinRates: {}, allBrawlers: [], allMapsList: [],
-      favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || [],
-      debugLog: []
+      isOfflineFallback: false,
+      favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
-
-    function logDebug(msg, data = null) {
-      const time = new Date().toLocaleTimeString();
-      let logLine = `[${time}] ${msg}`;
-      if (data) logLine += `\n${JSON.stringify(data, null, 2)}`;
-      state.debugLog.unshift(logLine);
-      document.getElementById('xray-log').innerText = state.debugLog.slice(0, 10).join('\n\n');
-    }
-
-    function toggleXray() {
-      document.getElementById('xray-panel').classList.toggle('translate-y-full');
-    }
 
     function translateText(engMode, engMap) {
       return `[${tradutorModos[engMode] || engMode}] ${tradutorMapas[engMap] || engMap}`;
@@ -192,19 +194,20 @@
     }
 
     async function initAPI() {
+      logDebug("Iniciando requisição de Brawlers...");
       try {
-        logDebug("Iniciando requisição de Brawlers...");
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers');
         const brawlersData = await brawlersRes.json();
+        logDebug(`Carregados ${brawlersData.list.length} Brawlers.`);
         
         state.allBrawlers = brawlersData.list.map(b => ({
           name: b.name, 
           image: b.imageUrl2 || b.imageUrl,
           className: b.class.name,
           gadget: b.gadgets.length > 0 ? b.gadgets[0] : null,
-          starPower: b.starPowers.length > 0 ? b.starPowers[0] : null
+          starPower: b.starPowers.length > 0 ? b.starPowers[0] : null,
+          gears: b.gears || []
         })).sort((a, b) => a.name.localeCompare(b.name));
-        logDebug(`Carregados ${state.allBrawlers.length} Brawlers.`);
 
         renderEnemyGrid();
         renderFavoritesList();
@@ -220,7 +223,6 @@
 
         state.allMapsList = mapsData.list || [];
         
-        // CORREÇÃO CRÍTICA DO SINALIZADOR DE MAPAS ATIVOS
         const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => Number(ev.map.id)) : [];
         logDebug(`Mapas Ativos detectados: ${activeMapIds.length}`);
 
@@ -229,23 +231,20 @@
 
         const activeMaps = state.allMapsList.filter(m => activeMapIds.includes(Number(m.id)));
         if(activeMaps.length > 0) {
-          mapSelect.innerHTML += `<optgroup label="=== AO VIVO AGORA ===">`;
-          // Adicionado sinalizador explícito (🟢 Ao Vivo)
-          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">🟢 Ao Vivo: ${translateText(m.gameMode.name, m.name)}</option>`);
+          mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora">`;
+          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
           mapSelect.innerHTML += `</optgroup>`;
         }
 
         const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(Number(m.id)));
-        mapSelect.innerHTML += `<optgroup label="=== Outros Mapas ===">`;
-        // Adicionado sinalizador explícito (⚪)
-        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">⚪ ${translateText(m.gameMode.name, m.name)}</option>`);
+        mapSelect.innerHTML += `<optgroup label="⚪ Outros Mapas">`;
+        otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${translateText(m.gameMode.name, m.name)}</option>`);
         mapSelect.innerHTML += `</optgroup>`;
 
-        document.getElementById('api-status').innerText = '🟢 Conectado';
+        document.getElementById('api-status').innerText = '🟢 Ao Vivo';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
-        document.getElementById('api-status').classList.remove('animate-pulse');
       } catch (e) {
-        logDebug("ERRO CRÍTICO NA API", e.message);
+        logDebug(`Erro crítico de API: ${e.message}`, 'error');
         document.getElementById('api-status').innerText = '🔴 Erro API';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
       }
@@ -259,7 +258,9 @@
       if (!state.mapId) { previewBox.classList.add('hidden'); return; }
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
-      if (selectedMap && selectedMap.imageUrl) { 
+      logDebug(`Buscando estatísticas para o mapa ID: ${state.mapId} (${selectedMap.name})`);
+
+      if (selectedMap && selectedMap.imageUrl) {
         imgEl.style.display = 'block';
         imgEl.src = selectedMap.imageUrl;
         previewBox.classList.remove('hidden');
@@ -268,27 +269,26 @@
       }
       
       document.getElementById('map-loading').style.display = 'block';
-      logDebug(`Buscando estatísticas para o mapa ID: ${state.mapId}`);
+      const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
+      const data = await res.json();
       
-      try {
-        const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`);
-        const data = await res.json();
+      state.currentWinRates = {};
+      state.isOfflineFallback = false;
+
+      // FILTRO ANTI-APAGÃO (FALLBACK OFFLINE)
+      if (!data.stats || data.stats.length === 0) {
+        logDebug(`⚠️ A API retornou 0 estatísticas de Win Rate para este mapa. Ativando Fallback Tático e DNA do Mapa.`, 'warn');
+        state.isOfflineFallback = true;
+        document.getElementById('fallback-badge').classList.remove('hidden');
         
-        state.currentWinRates = {};
-        
-        // PROTEÇÃO CONTRA LISTA VAZIA (FALLBACK)
-        if (data.stats && data.stats.length > 0) {
-          data.stats.forEach(s => { state.currentWinRates[s.brawler.name] = s.winRate; });
-          state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate);
-          logDebug(`Estatísticas baixadas: ${data.stats.length} brawlers encontrados no meta.`);
-        } else {
-          // A API NÃO RETORNOU DADOS PARA ESSE MAPA! Aciona o Fallback.
-          state.mapTopBrawlers = [];
-          logDebug(`⚠️ A API retornou 0 estatísticas para este mapa. Usando Fallback de Classes.`);
-        }
-      } catch (e) {
-        state.mapTopBrawlers = [];
-        logDebug(`⚠️ Falha ao ler estatísticas do mapa. Erro: ${e.message}`);
+        state.mapTopBrawlers = state.allBrawlers.map(b => ({
+          brawler: { name: b.name },
+          winRate: 50 // Nota base padrão
+        }));
+      } else {
+        document.getElementById('fallback-badge').classList.add('hidden');
+        data.stats.forEach(s => { state.currentWinRates[s.brawler.name] = s.winRate; });
+        state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate);
       }
       
       document.getElementById('map-loading').style.display = 'none';
@@ -315,8 +315,6 @@
       const eSec = document.getElementById('enemy-section');
       if (turn === 'first') {
         eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none';
-        state.enemyPicks = [];
-        renderSelectedEnemies();
       } else {
         eSec.style.opacity = '1'; eSec.style.pointerEvents = 'auto';
       }
@@ -327,13 +325,10 @@
       const grid = document.getElementById('enemy-grid');
       grid.innerHTML = '';
       let filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()) && !state.enemyPicks.includes(b.name));
-      
-      // Ordena por Win Rate (se existir)
       filtered.sort((a, b) => {
         const wrA = state.currentWinRates[a.name] || 0, wrB = state.currentWinRates[b.name] || 0;
         return wrB !== wrA ? wrB - wrA : a.name.localeCompare(b.name);
       });
-      
       filtered.forEach(b => {
         const wr = state.currentWinRates[b.name] ? `<div class="absolute top-0.5 right-0.5 bg-slate-900/80 text-gray-300 text-[8px] px-1 rounded pointer-events-none">${state.currentWinRates[b.name]}%</div>` : '';
         grid.innerHTML += `
@@ -366,14 +361,15 @@
         if (bInfo) {
           container.innerHTML += `
             <div class="flex items-center gap-1 bg-red-950/60 p-1 pr-2 rounded border border-red-900">
-              <img src="${bInfo.image}" onerror="this.src='${getFallbackAvatar(name)}'" class="w-6 h-6 rounded bg-slate-900 object-cover">
+              <img src="${bInfo.image}" onerror="this.src='${getFallbackAvatar(name)}'" class="w-6 h-6 rounded bg-slate-900">
               <span class="text-xs font-bold text-white">${name}</span>
-              <button onclick="removeEnemy('${name}')" class="ml-1 text-red-500 hover:text-red-300 font-bold">X</button>
+              <button onclick="removeEnemy('${name}')" class="ml-1 text-red-500 hover:text-red-300 font-bold ml-2">X</button>
             </div>`;
         }
       });
     }
 
+    // --- LÓGICA DE ESCOLHA TRAVADA (COM ENGRENAGENS) ---
     function selectMyPick(name) {
       state.myPick = name;
       document.getElementById('suggestions-area').classList.add('hidden');
@@ -383,7 +379,7 @@
       document.getElementById('locked-name').innerText = name;
       document.getElementById('locked-img').src = bInfo.image;
       
-      // Builds
+      // Gadget e Star Power
       if(bInfo.gadget) {
         document.getElementById('locked-gadget-img').src = bInfo.gadget.imageUrl;
         document.getElementById('locked-gadget-name').innerText = bInfo.gadget.name;
@@ -391,6 +387,22 @@
       if(bInfo.starPower) {
         document.getElementById('locked-sp-img').src = bInfo.starPower.imageUrl;
         document.getElementById('locked-sp-name').innerText = bInfo.starPower.name;
+      }
+
+      // Filtro de Engrenagens (Gears)
+      const gear1 = document.getElementById('locked-gear1-img');
+      const gear2 = document.getElementById('locked-gear2-img');
+      gear1.classList.add('hidden'); gear2.classList.add('hidden');
+      
+      if (bInfo.gears && bInfo.gears.length >= 2) {
+        // Prioriza as engrenagens Míticas(5) e Épicas(4), senão pega Dano/Escudo/Velocidade
+        let sortedGears = [...bInfo.gears].sort((a, b) => {
+          if(a.level !== b.level) return b.level - a.level;
+          return a.name.localeCompare(b.name);
+        });
+        
+        gear1.src = sortedGears[0].imageUrl; gear1.classList.remove('hidden');
+        gear2.src = sortedGears[1].imageUrl; gear2.classList.remove('hidden');
       }
       
       renderTargetAnalysis();
@@ -420,10 +432,10 @@
         let statusHtml = '';
         
         if (classAdvantages[myInfo.className] && classAdvantages[myInfo.className].includes(eInfo.className)) {
-          statusHtml = `<span class="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold ml-auto">🎯 Focar</span>`;
+          statusHtml = `<span class="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold ml-auto">🎯 Alvo Ideal</span>`;
         } 
         else if (classAdvantages[eInfo.className] && classAdvantages[eInfo.className].includes(myInfo.className)) {
-          statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ Evite</span>`;
+          statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ Evite (Counter)</span>`;
         }
         else {
           statusHtml = `<span class="text-gray-500 text-[10px] font-bold ml-auto">Neutro</span>`;
@@ -431,7 +443,7 @@
 
         tContainer.innerHTML += `
           <div class="flex items-center gap-2 bg-slate-800 p-1.5 rounded border border-slate-600">
-            <img src="${eInfo.image}" onerror="this.src='${getFallbackAvatar(eInfo.name)}'" class="w-6 h-6 rounded bg-slate-900 object-cover">
+            <img src="${eInfo.image}" class="w-6 h-6 rounded bg-slate-900">
             <span class="text-xs text-white">${eInfo.name}</span>
             <span class="text-[9px] text-gray-400">(${eInfo.className})</span>
             ${statusHtml}
@@ -440,85 +452,75 @@
       });
     }
 
+    // --- LÓGICA MISTA (API WIN RATE + OFFLINE DNA + CLASSE) ---
     function updateRecommendations() {
       const resDiv = document.getElementById('results');
-      const badge = document.getElementById('sugg-badge');
       resDiv.innerHTML = '';
 
-      if (!state.mapId) { 
-        resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; 
-        badge.innerText = "Aguardando"; badge.className = "text-[9px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-normal";
-        return; 
-      }
-      if (state.mode === 'ranked' && !state.turn) { 
-        resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; 
-        badge.innerText = "Aguardando"; badge.className = "text-[9px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-normal";
-        return; 
-      }
+      if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
+      if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
 
-      // FALLBACK ANTI-APAGÃO: Se a API falhou em dar Win Rates (mapTopBrawlers vazio), cria uma lista base genérica com Win Rate "Neutro" (50%).
-      let baseData = state.mapTopBrawlers;
-      let usingFallback = false;
-      
-      if (baseData.length === 0) {
-        usingFallback = true;
-        badge.innerText = "Tática Pura (Sem Dados do Mapa)";
-        badge.className = "text-[9px] bg-purple-900 text-purple-300 border border-purple-700 px-2 py-0.5 rounded font-bold";
-        baseData = state.allBrawlers.map(b => ({ brawler: { name: b.name }, winRate: 50 }));
-      } else {
-        badge.innerText = "Meta Atual (API)";
-        badge.className = "text-[9px] bg-green-900 text-green-300 border border-green-700 px-2 py-0.5 rounded font-bold";
-      }
+      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
+      const dna = mapDNA[selectedMap?.name]; // Pega o DNA do mapa, se existir
 
-      let candidatos = baseData.map(apiB => {
+      let candidatos = state.mapTopBrawlers.map(apiB => {
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
+        let scoreFinal = apiB.winRate; // Base é Win Rate (ou 50 se a API falhou)
+
+        // Se a API caiu (Offline Fallback), injetamos o DNA do Mapa no Score
+        if (state.isOfflineFallback && dna && bInfo) {
+          if (dna.boost.includes(bInfo.className)) scoreFinal += 20; // +20 pontos se a classe for boa pro mapa
+          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) scoreFinal += 25; // Brawlers chaves do mapa
+          if (dna.punish.includes(bInfo.className)) scoreFinal -= 30; // Punição severa (ex: Sniper na Moita)
+        }
+
         return { 
           name: apiB.brawler.name, image: bInfo ? bInfo.image : '',
-          className: bInfo ? bInfo.className : '', winRate: apiB.winRate, 
-          isFav: state.favorites.includes(apiB.brawler.name), score: apiB.winRate
+          className: bInfo ? bInfo.className : '', 
+          isFav: state.favorites.includes(apiB.brawler.name), 
+          score: scoreFinal, baseWr: apiB.winRate
         };
       });
 
       if (state.mode === 'ranked') {
         candidatos = candidatos.filter(b => !state.enemyPicks.includes(b.name));
         
+        // Ajusta pelo Pedra/Papel/Tesoura das classes inimigas
         if (state.turn === 'mid' || state.turn === 'last') {
-          // Ajusta o score puramente baseado na Matriz de Vantagens
           candidatos.forEach(c => {
             state.enemyPicks.forEach(enemyName => {
               const enemyClass = state.allBrawlers.find(e => e.name === enemyName)?.className;
-              // Bônus se bate no inimigo
-              if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) c.score += (usingFallback ? 10 : 3);
-              // Penalidade severa se apanha do inimigo
-              if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) c.score -= (usingFallback ? 20 : 6);
+              if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) {
+                c.score += state.isOfflineFallback ? 15 : 2; // Peso maior se offline
+              }
+              if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) {
+                c.score -= state.isOfflineFallback ? 20 : 5; // Punição pesada
+              }
             });
           });
         }
       }
 
-      // Ordena
+      // Ordena por Score, garantindo que favoritos empatados subam
       candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.score - a.score) : (b.isFav ? 1 : -1));
       
       const best = candidatos.slice(0, 5);
       
-      if(best.length === 0) {
-        resDiv.innerHTML = '<p class="text-xs text-yellow-400">Nenhum Brawler atende os critérios.</p>';
-        return;
-      }
-      
       best.forEach(b => {
         const starHtml = b.isFav ? `<div class="absolute -top-2 -left-2 text-xl drop-shadow-md z-20">⭐</div>` : '';
-        const wrText = usingFallback ? `Score: ${b.score}` : `WR: ${b.winRate}%`;
-        
+        const scoreVisor = state.isOfflineFallback 
+          ? `<span class="text-[10px] bg-purple-900/80 text-purple-200 px-1.5 py-0.5 rounded border border-purple-700/50 font-bold whitespace-nowrap">Score: ${b.score}</span>`
+          : `<span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50 font-bold whitespace-nowrap">WR: ${b.baseWr}%</span>`;
+
         resDiv.innerHTML += `
           <div onclick="selectMyPick('${b.name}')" class="cursor-pointer glass p-2 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex items-center gap-3 hover:bg-slate-700 transition relative">
             ${starHtml}
-            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg object-cover">
+            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg">
             <div class="flex-1">
               <span class="font-bold text-base text-white block">${b.name}</span>
               <span class="text-[9px] text-gray-400">${b.className}</span>
             </div>
-            <span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50 font-bold whitespace-nowrap">${wrText}</span>
+            ${scoreVisor}
           </div>
         `;
       });
@@ -538,7 +540,7 @@
         const isFav = state.favorites.includes(b.name);
         const style = isFav ? 'border-2 border-yellow-400 opacity-100' : 'border border-slate-700 opacity-50 hover:opacity-100';
         const wr = state.currentWinRates[b.name] ? `<span class="absolute top-0 right-0 bg-slate-900/80 text-gray-300 text-[8px] px-1 rounded-bl-lg">${state.currentWinRates[b.name]}%</span>` : '';
-        list.innerHTML += `<div onclick="toggleFav('${b.name}')" class="cursor-pointer flex flex-col items-center gap-1 relative"><img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-full aspect-square object-cover rounded-lg bg-slate-800 ${style}"><span class="text-[9px] truncate w-full text-center ${isFav ? 'text-yellow-400 font-bold' : 'text-gray-400'}">${b.name}</span>${wr}</div>`;
+        list.innerHTML += `<div onclick="toggleFav('${b.name}')" class="cursor-pointer flex flex-col items-center gap-1 relative"><img src="${b.image}" class="w-full aspect-square object-cover rounded-lg bg-slate-800 ${style}"><span class="text-[9px] truncate w-full text-center ${isFav ? 'text-yellow-400 font-bold' : 'text-gray-400'}">${b.name}</span>${wr}</div>`;
       });
     }
     function toggleFav(brawlerName) {
