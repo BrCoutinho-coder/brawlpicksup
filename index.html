@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Conexão Direta</title>
+  <title>Brawl Draft Pro - Super Raio-X</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -13,11 +13,33 @@
     ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
     ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
     
-    #debug-terminal { display: none; background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-top: 2px solid #333; max-height: 200px; overflow-y: auto; }
-    #debug-terminal p { margin: 2px 0; border-bottom: 1px dashed #111; padding-bottom: 2px; }
+    /* SUPER RAIO-X TERMINAL */
+    #super-debug { 
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); z-index: 9999; 
+      display: flex; flex-direction: column; padding: 20px; font-family: 'Courier New', Courier, monospace; 
+    }
+    #debug-log { flex: 1; overflow-y: auto; background: #0a0a0a; border: 1px solid #333; padding: 10px; border-radius: 8px; font-size: 11px; }
+    .log-sys { color: #0ea5e9; font-weight: bold; margin-top: 10px; border-bottom: 1px dashed #0ea5e9; padding-bottom: 4px;}
+    .log-info { color: #a1a1aa; }
+    .log-success { color: #22c55e; }
+    .log-warn { color: #eab308; }
+    .log-error { color: #ef4444; font-weight: bold; }
+    .log-raw { color: #d946ef; font-size: 9px; margin-left: 10px; white-space: pre-wrap; word-wrap: break-word; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col items-center pb-12">
+
+  <div id="super-debug">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-green-400 font-bold text-xl">⚡ SUPER RAIO-X DE CONEXÃO ⚡</h2>
+      <button onclick="toggleSuperDebug()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-500">FECHAR RAIO-X (Ir para o App)</button>
+    </div>
+    <div id="debug-log"></div>
+    <div class="mt-4 flex gap-2">
+      <button onclick="runFullDiagnostics()" class="bg-blue-600 px-4 py-2 rounded font-bold hover:bg-blue-500">🔄 Forçar Diagnóstico Completo</button>
+      <button onclick="document.getElementById('debug-log').innerHTML=''" class="bg-slate-700 px-4 py-2 rounded font-bold hover:bg-slate-600">Limpar Log</button>
+    </div>
+  </div>
 
   <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()"></div>
   <div id="sidebar" class="fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 z-50 transform translate-x-full p-4 overflow-hidden flex flex-col">
@@ -33,7 +55,7 @@
     <header class="flex justify-between items-center mb-4">
       <h1 class="text-xl font-bold text-yellow-400">Brawl Draft</h1>
       <div class="flex items-center gap-2">
-        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Conectando...</div>
+        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Diagnosticando...</div>
         <button onclick="toggleSidebar()" class="bg-slate-800 p-2 rounded text-xl border border-slate-600 hover:bg-slate-700">⭐</button>
       </div>
     </header>
@@ -47,7 +69,7 @@
       <div class="glass p-4 rounded-xl">
         <label class="block text-sm font-bold mb-2 text-gray-300">1. Rotação Atual</label>
         <select id="map-select" class="w-full bg-slate-800 text-white p-2 rounded-lg border border-slate-600 focus:outline-none mb-1 text-sm" onchange="fetchMapStats()">
-          <option value="">Carregando mapas...</option>
+          <option value="">Aguardando conexão...</option>
         </select>
         
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
@@ -87,7 +109,6 @@
         
         <div class="flex gap-4">
           <img id="locked-img" src="" class="w-16 h-16 rounded-lg border border-slate-500 bg-slate-900 shadow-lg">
-          
           <div class="flex-1 space-y-2">
             <div class="bg-slate-800/80 p-2 rounded border border-slate-600">
               <p class="text-[10px] text-gray-400 font-bold mb-1">Build Recomendada:</p>
@@ -98,11 +119,6 @@
               <div class="flex items-center gap-2 mb-2">
                 <img id="locked-sp-img" src="" class="w-4 h-4 rounded-full bg-black">
                 <span id="locked-sp-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
-              </div>
-              <div class="flex items-center gap-2 border-t border-slate-600 pt-1">
-                <span class="text-[8px] text-gray-500 font-bold uppercase">Gears:</span>
-                <img id="locked-gear1-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
-                <img id="locked-gear2-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
               </div>
             </div>
           </div>
@@ -116,61 +132,92 @@
           <h2 class="text-lg font-bold text-green-400">Sugestões de Pick:</h2>
           <span id="fallback-badge" class="hidden text-[8px] bg-purple-900 text-purple-300 px-1.5 py-0.5 rounded border border-purple-700">Tática Pura (Offline)</span>
         </div>
-        <p class="text-[10px] text-gray-400 mb-2">Clique em um brawler para travar sua escolha e ver seus alvos.</p>
+        <p class="text-[10px] text-gray-400 mb-2">Clique em um brawler para travar sua escolha.</p>
         <div id="results" class="space-y-2"></div>
       </div>
 
     </main>
   </div>
 
-  <button onclick="toggleDebug()" class="fixed bottom-2 right-2 bg-slate-800 text-gray-500 text-[10px] px-2 py-1 rounded border border-slate-600 hover:text-white z-40">Raio-X (Debug)</button>
-  <div id="debug-terminal" class="w-full fixed bottom-0 left-0 z-50"></div>
+  <button onclick="toggleSuperDebug()" class="fixed bottom-2 right-2 bg-slate-800 text-green-400 font-bold text-[10px] px-3 py-2 rounded border border-green-600 shadow-[0_0_10px_rgba(34,197,94,0.5)] z-40">ABRIR RAIO-X</button>
 
   <script>
-    function logDebug(msg, type='info') {
-      const term = document.getElementById('debug-terminal');
-      const time = new Date().toLocaleTimeString();
-      let color = '#0f0';
-      if(type==='error') color = '#f00';
-      if(type==='warn') color = '#ff0';
-      term.innerHTML = `<p style="color: ${color}">[${time}] ${msg}</p>` + term.innerHTML;
+    // --- SISTEMA SUPER RAIO-X DE DIAGNÓSTICO ---
+    function logX(msg, type='info') {
+      const term = document.getElementById('debug-log');
+      const time = new Date().toISOString().substring(11, 19);
+      let html = `<div class="log-${type}">[${time}] ${msg}</div>`;
+      term.innerHTML += html;
+      term.scrollTop = term.scrollHeight;
     }
 
-    function toggleDebug() {
-      const term = document.getElementById('debug-terminal');
-      term.style.display = term.style.display === 'block' ? 'none' : 'block';
+    function toggleSuperDebug() {
+      const term = document.getElementById('super-debug');
+      term.style.display = term.style.display === 'none' ? 'flex' : 'none';
     }
 
-    // --- MOTOR DIRETO E LIMPO (Sem Proxies, Anti-Lixo no Console) ---
-    async function fetchGarantido(url, checkKey = null) {
-      try {
-        logDebug(`[DIRETO] Buscando: ${url.split('/').pop()}`);
-        const cacheBuster = url.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`;
-        const res = await fetch(url + cacheBuster, { cache: 'no-store' });
-        
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        
-        if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
-          throw new Error(`Dados zerados na chave '${checkKey}'`);
+    // O Motor Híbrido que tenta 4 caminhos diferentes e loga tudo
+    async function fetchDiagnostico(endpoint, checkKey) {
+      const baseUrl = `https://api.brawlapi.com/v1/${endpoint}`;
+      logX(`======= INICIANDO TESTE DE ROTA: /${endpoint} =======`, 'sys');
+
+      const caminhos = [
+        { nome: 'DIRETA', url: baseUrl, isJSONP: false },
+        { nome: 'TÚNEL ALLORIGINS', url: `https://api.allorigins.win/get?url=${encodeURIComponent(baseUrl)}`, isWrapper: true },
+        { nome: 'PROXY CODETABS', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(baseUrl)}`, isJSONP: false },
+        { nome: 'PROXY CORS.IO', url: `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`, isJSONP: false }
+      ];
+
+      for (let caminho of caminhos) {
+        try {
+          logX(`⏳ Testando caminho [${caminho.nome}]...`, 'info');
+          const t0 = performance.now();
+          
+          const cacheBuster = caminho.url.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`;
+          const res = await fetch(caminho.url + cacheBuster, { cache: 'no-store' });
+          const t1 = performance.now();
+          
+          logX(`👉 Resposta [${caminho.nome}]: HTTP ${res.status} ${res.statusText} (${Math.round(t1 - t0)}ms)`, res.ok ? 'success' : 'warn');
+
+          if (!res.ok) {
+            logX(`❌ Servidor bloqueou com código ${res.status}. Tentando próximo...`, 'error');
+            continue; // Pula pro próximo caminho
+          }
+
+          let data;
+          if (caminho.isWrapper) {
+            const wrapper = await res.json();
+            if (!wrapper.contents) throw new Error("AllOrigins retornou vazio.");
+            data = JSON.parse(wrapper.contents);
+          } else {
+            data = await res.json();
+          }
+
+          // Checa se a API respondeu 200 OK mas mandou array vazio []
+          if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
+            logX(`⚠️ AVISO: Caminho conectou, mas a lista '${checkKey}' está VAZIA. A API deles pode estar em manutenção!`, 'warn');
+            logX(`Conteúdo cru recebido:`, 'info');
+            logX(JSON.stringify(data).substring(0, 150) + '...', 'raw');
+            continue;
+          }
+
+          logX(`✅ SUCESSO ABSOLUTO via [${caminho.nome}]! Encontrados ${data[checkKey] ? data[checkKey].length : 'dados'} itens.`, 'success');
+          return data;
+
+        } catch (err) {
+          logX(`❌ ERRO no [${caminho.nome}]: ${err.name} - ${err.message}`, 'error');
         }
-        
-        logDebug(`✅ Sucesso na conexão direta!`);
-        return data;
-      } catch (e) {
-        logDebug(`❌ Falha na API (${e.message}). Acionando Modo Tático Offline.`, 'error');
-        return {}; // Retorna vazio silenciosamente. O sistema perceberá e ativará o DNA do Mapa.
       }
+
+      logX(`🚨 FALHA CRÍTICA: Todas as 4 rotas de rede falharam ou a API está 100% vazia para /${endpoint}. Ativando Banco de Dados Offline.`, 'error');
+      return {}; // Aciona o fallback offline
     }
 
+    // Funções do Jogo (Tática Offline)
     const classAdvantages = {
-      "Assassin": ["Artillery", "Marksman"],
-      "Tank": ["Assassin"],
-      "Artillery": ["Tank", "Controller"],
-      "Marksman": ["Controller", "Damage Dealer", "Tank"],
-      "Controller": ["Assassin", "Tank"],
-      "Damage Dealer": ["Tank", "Assassin"],
-      "Support": []
+      "Assassin": ["Artillery", "Marksman"], "Tank": ["Assassin"], "Artillery": ["Tank", "Controller"],
+      "Marksman": ["Controller", "Damage Dealer", "Tank"], "Controller": ["Assassin", "Tank"],
+      "Damage Dealer": ["Tank", "Assassin"], "Support": []
     };
 
     const mapDNA = {
@@ -184,23 +231,25 @@
       "stonefort": { name: "Forte de Pedra", boost: ["Artillery", "Controller"], punish: ["Assassin"], specificBoost: ["Barley", "Tick"] }
     };
 
-    const tradutorModos = { "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo" };
-    const tradutorMapas = { "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Temple Ruins": "Ruínas do Templo", "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca", "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto", "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada", "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central", "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura", "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes", "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm", "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva", "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central", "Stone Fort": "Forte de Pedra" };
-
     let state = {
       mode: 'ranked', mapId: null, turn: null, enemyPicks: [], myPick: null, 
       mapTopBrawlers: [], currentWinRates: {}, allBrawlers: [], allMapsList: [],
-      isOfflineFallback: false,
-      favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
+      isOfflineFallback: false, favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
-    function translateText(engMode, engMap) { return `[${tradutorModos[engMode] || engMode}] ${tradutorMapas[engMap] || engMap}`; }
+    function translateText(engMode, engMap) { return `[${engMode}] ${engMap}`; }
     function getFallbackAvatar(name) { return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=e2e8f0&size=128`; }
     function normalizeStr(str) { return str.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }
 
+    async function runFullDiagnostics() {
+      document.getElementById('debug-log').innerHTML = '';
+      logX("🚀 INICIANDO DIAGNÓSTICO COMPLETO A PEDIDO DO USUÁRIO...", "sys");
+      await initAPI();
+    }
+
     async function initAPI() {
       try {
-        const brawlersData = await fetchGarantido('https://api.brawlapi.com/v1/brawlers', 'list');
+        const brawlersData = await fetchDiagnostico('brawlers', 'list');
         
         if(brawlersData.list) {
           state.allBrawlers = brawlersData.list.map(b => ({
@@ -214,13 +263,13 @@
         renderEnemyGrid(); renderFavoritesList();
 
         const [eventsData, mapsData] = await Promise.all([
-          fetchGarantido('https://api.brawlapi.com/v1/events', 'active'),
-          fetchGarantido('https://api.brawlapi.com/v1/maps', 'list')
+          fetchDiagnostico('events', 'active'),
+          fetchDiagnostico('maps', 'list')
         ]);
 
         state.allMapsList = mapsData.list || [];
         const activeMapIds = eventsData.active ? eventsData.active.filter(ev => ev.map).map(ev => Number(ev.map.id)) : [];
-
+        
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
 
@@ -238,12 +287,17 @@
           mapSelect.innerHTML += `</optgroup>`;
         }
 
-        document.getElementById('api-status').innerText = '🟢 Conectado';
+        if(activeMaps.length === 0 && otherMaps.length === 0) throw new Error("Listas vazias");
+
+        document.getElementById('api-status').innerText = '🟢 Online';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
         document.getElementById('api-status').classList.remove('animate-pulse');
+        
+        logX("🎉 SETUP INICIAL CONCLUÍDO. O site está pronto para uso.", "sys");
       } catch (e) {
         document.getElementById('api-status').innerText = '🔴 Offline';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
+        logX("💀 FALHA GERAL NO SETUP. A API recusa-se a entregar os mapas e brawlers básicos.", "error");
       }
     }
 
@@ -256,8 +310,7 @@
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
       if (selectedMap && selectedMap.imageUrl) {
-        imgEl.style.display = 'block';
-        imgEl.src = selectedMap.imageUrl;
+        imgEl.style.display = 'block'; imgEl.src = selectedMap.imageUrl;
         previewBox.classList.remove('hidden');
       } else {
         previewBox.classList.add('hidden');
@@ -265,19 +318,17 @@
       
       document.getElementById('map-loading').style.display = 'block';
       
-      const data = await fetchGarantido(`https://api.brawlapi.com/v1/maps/${state.mapId}`, 'stats');
+      // DIAGNÓSTICO DO MAPA ESPECÍFICO
+      const data = await fetchDiagnostico(`maps/${state.mapId}`, 'stats');
       
       state.currentWinRates = {};
       state.isOfflineFallback = false;
 
       if (!data.stats || data.stats.length === 0) {
-        logDebug(`⚠️ Win Rates falharam. Acionando Tática Pura.`, 'warn');
+        logX(`⚠️ Acionando Inteligência Artificial (DNA) para este mapa porque a API falhou.`, 'sys');
         state.isOfflineFallback = true;
         document.getElementById('fallback-badge').classList.remove('hidden');
-        
-        state.mapTopBrawlers = state.allBrawlers.map(b => ({
-          brawler: { name: b.name }, winRate: 50
-        }));
+        state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawler: { name: b.name }, winRate: 50 }));
       } else {
         document.getElementById('fallback-badge').classList.add('hidden');
         data.stats.forEach(s => { state.currentWinRates[s.brawler.name] = s.winRate; });
@@ -301,7 +352,6 @@
       state.turn = turn;
       ['first', 'mid', 'last'].forEach(t => document.getElementById(`btn-${t}`).style.opacity = '0.5');
       document.getElementById(`btn-${turn}`).style.opacity = '1';
-      
       const eSec = document.getElementById('enemy-section');
       if (turn === 'first') { eSec.style.opacity = '0.5'; eSec.style.pointerEvents = 'none'; } 
       else { eSec.style.opacity = '1'; eSec.style.pointerEvents = 'auto'; }
@@ -361,16 +411,6 @@
         document.getElementById('locked-sp-img').src = bInfo.starPower.imageUrl;
         document.getElementById('locked-sp-name').innerText = bInfo.starPower.name;
       }
-
-      const gear1 = document.getElementById('locked-gear1-img'); const gear2 = document.getElementById('locked-gear2-img');
-      gear1.classList.add('hidden'); gear2.classList.add('hidden');
-      if (bInfo.gears && bInfo.gears.length >= 2) {
-        let sortedGears = [...bInfo.gears].sort((a, b) => {
-          if(a.level !== b.level) return b.level - a.level; return a.name.localeCompare(b.name);
-        });
-        gear1.src = sortedGears[0].imageUrl; gear1.classList.remove('hidden');
-        gear2.src = sortedGears[1].imageUrl; gear2.classList.remove('hidden');
-      }
       renderTargetAnalysis();
     }
 
@@ -394,7 +434,7 @@
         if (classAdvantages[myInfo.className] && classAdvantages[myInfo.className].includes(eInfo.className)) {
           statusHtml = `<span class="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold ml-auto">🎯 Alvo Ideal</span>`;
         } else if (classAdvantages[eInfo.className] && classAdvantages[eInfo.className].includes(myInfo.className)) {
-          statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ Evite (Counter)</span>`;
+          statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ Evite</span>`;
         } else {
           statusHtml = `<span class="text-gray-500 text-[10px] font-bold ml-auto">Neutro</span>`;
         }
@@ -417,9 +457,9 @@
         let tagsAtivas = [];
 
         if (state.isOfflineFallback && dna && bInfo) {
-          if (dna.boost.includes(bInfo.className)) { scoreFinal += 20; tagsAtivas.push('👍 Vantagem Terreno'); }
-          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += 30; tagsAtivas.push('👑 Meta do Mapa'); }
-          if (dna.punish.includes(bInfo.className)) { scoreFinal -= 40; tagsAtivas.push('❌ Terrível aqui'); }
+          if (dna.boost.includes(bInfo.className)) { scoreFinal += 20; tagsAtivas.push('👍 Terreno'); }
+          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += 30; tagsAtivas.push('👑 Meta'); }
+          if (dna.punish.includes(bInfo.className)) { scoreFinal -= 40; tagsAtivas.push('❌ Ruim'); }
         }
 
         return { 
@@ -436,11 +476,11 @@
               const enemyClass = state.allBrawlers.find(e => e.name === enemyName)?.className;
               if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) {
                 c.score += state.isOfflineFallback ? 15 : 2; 
-                if (state.isOfflineFallback && !c.tags.includes('🎯 Countera Inimigo')) c.tags.push('🎯 Countera Inimigo');
+                if (state.isOfflineFallback && !c.tags.includes('🎯 Countera')) c.tags.push('🎯 Countera');
               }
               if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) {
                 c.score -= state.isOfflineFallback ? 20 : 5; 
-                if (state.isOfflineFallback && !c.tags.includes('⚠️ Apanha Feio')) c.tags.push('⚠️ Apanha Feio');
+                if (state.isOfflineFallback && !c.tags.includes('⚠️ Apanha')) c.tags.push('⚠️ Apanha');
               }
             });
           });
@@ -501,7 +541,8 @@
       if(!state.myPick) updateRecommendations();
     }
 
-    initAPI();
+    // Inicializa o diagnóstico automaticamente
+    runFullDiagnostics();
   </script>
 </body>
 </html>
