@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Túnel JSON</title>
+  <title>Brawl Draft Pro - Conexão Direta</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -53,7 +53,7 @@
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
           <img id="map-img" src="" class="h-32 object-contain" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Extraindo dados do túnel...</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando dados...</div>
       </div>
 
       <div id="draft-area" class="space-y-4">
@@ -141,52 +141,25 @@
       term.style.display = term.style.display === 'block' ? 'none' : 'block';
     }
 
-    // --- NOVO MOTOR BLINDADO (TÚNEL JSON API) ---
+    // --- MOTOR DIRETO E LIMPO (Sem Proxies, Anti-Lixo no Console) ---
     async function fetchGarantido(url, checkKey = null) {
-      // 1. Tenta a rota direta e normal
       try {
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) throw new Error('Dados vazios (Direto)');
-          logDebug(`✅ Conexão Direta Aceita: ${url.split('/').pop()}`);
-          return data;
-        }
-      } catch (e) {
-        logDebug(`⚠️ Bloqueio Direto. Acionando Túnel JSON...`, 'warn');
-      }
-
-      // 2. Rota de Tunelamento (Bypass Absoluto via AllOrigins GET)
-      try {
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const res = await fetch(proxyUrl);
-        const dataWrapper = await res.json();
+        logDebug(`[DIRETO] Buscando: ${url.split('/').pop()}`);
+        const cacheBuster = url.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`;
+        const res = await fetch(url + cacheBuster, { cache: 'no-store' });
         
-        if (dataWrapper.contents) {
-          // Desempacota a string que o servidor enviou de volta
-          const data = JSON.parse(dataWrapper.contents);
-          if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
-            throw new Error(`Dados zerados no túnel`);
-          }
-          logDebug(`✅ Sucesso via Túnel JSON!`);
-          return data;
-        }
-        throw new Error('Conteúdo vazio no túnel');
-      } catch (e) {
-        logDebug(`⚠️ AllOrigins falhou. Tentando ThingProxy...`, 'warn');
-      }
-      
-      // 3. Último recurso Proxy
-      try {
-        const proxyUrl2 = `https://thingproxy.freeboard.io/fetch/${url}`;
-        const res = await fetch(proxyUrl2);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) throw new Error('Vazio no ThingProxy');
-        logDebug(`✅ Sucesso via ThingProxy!`);
+        
+        if (checkKey && (!data[checkKey] || data[checkKey].length === 0)) {
+          throw new Error(`Dados zerados na chave '${checkKey}'`);
+        }
+        
+        logDebug(`✅ Sucesso na conexão direta!`);
         return data;
       } catch (e) {
-        logDebug(`❌ Bloqueio total do servidor da API. Acionando Tática Offline.`, 'error');
-        return {}; 
+        logDebug(`❌ Falha na API (${e.message}). Acionando Modo Tático Offline.`, 'error');
+        return {}; // Retorna vazio silenciosamente. O sistema perceberá e ativará o DNA do Mapa.
       }
     }
 
