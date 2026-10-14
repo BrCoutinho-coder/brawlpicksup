@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Servidor Privado</title>
+  <title>Brawl Draft Pro - Arquitetura Híbrida</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -50,7 +50,7 @@
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
           <img id="map-img" src="" class="h-32 object-contain" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Sincronizando com a API...</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Sincronizando estatísticas...</div>
       </div>
 
       <div id="draft-area" class="space-y-4">
@@ -152,7 +152,6 @@
 
     async function initAPI() {
       try {
-        // 1. Busca Brawlers estáticos da API Pública (raramente bloqueado)
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers', { cache: 'no-store' });
         const brawlersData = await brawlersRes.json();
         
@@ -167,16 +166,13 @@
 
         renderEnemyGrid(); renderFavoritesList();
 
-        // 2. Busca lista de Mapas
         const mapsRes = await fetch('https://api.brawlapi.com/v1/maps', { cache: 'no-store' });
         const mapsData = await mapsRes.json();
         state.allMapsList = mapsData.list || [];
 
-        // 3. Busca a Rotação Oficial DIRETAMENTE NO SEU SERVIDOR RENDER
         const rotRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/rotacao`, { cache: 'no-store' });
         const rotData = await rotRes.json();
 
-        // Tratamento caso a variável do Render não tenha sido preenchida ainda
         if (rotData.error && rotData.error.includes("SUPERCELL_TOKEN")) {
             document.getElementById('api-status').innerText = '⚠️ Token Ausente no Render';
             document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
@@ -184,7 +180,6 @@
             return;
         }
 
-        // A API Oficial entrega os eventos num formato Array direto
         const activeMapIds = Array.isArray(rotData) ? rotData.map(ev => Number(ev.event.id)) : [];
         
         const mapSelect = document.getElementById('map-select');
@@ -232,8 +227,9 @@
       document.getElementById('map-loading').style.display = 'block';
       
       try {
-        // Busca as estatísticas de vitória cruzando pelo seu Servidor Render
-        const res = await fetch(`${MEU_SERVIDOR_RENDER}/api/winrates/${state.mapId}`, { cache: 'no-store' });
+        // A MÁGICA HÍBRIDA: Pede os Win Rates diretamente através do navegador do utilizador,
+        // fugindo completamente ao bloqueio de Cloudflare que o Render estava a sofrer.
+        const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`, { cache: 'no-store' });
         const data = await res.json();
         
         state.currentWinRates = {};
@@ -249,7 +245,6 @@
           state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate);
         }
       } catch(e) {
-        // Se a busca falhar, aciona Inteligência Local silenciosamente
         state.isOfflineFallback = true;
         document.getElementById('fallback-badge').classList.remove('hidden');
         state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawler: { name: b.name }, winRate: 50 }));
