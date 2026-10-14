@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Arquitetura Híbrida</title>
+  <title>Brawl Draft Pro - Servidor Privado Total</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -30,7 +30,7 @@
     <header class="flex justify-between items-center mb-4">
       <h1 class="text-xl font-bold text-yellow-400">Brawl Draft</h1>
       <div class="flex items-center gap-2">
-        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Carregando Servidor...</div>
+        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Conectando Servidor...</div>
         <button onclick="toggleSidebar()" class="bg-slate-800 p-2 rounded text-xl border border-slate-600 hover:bg-slate-700">⭐</button>
       </div>
     </header>
@@ -120,6 +120,7 @@
   </div>
 
   <script>
+    // A URL DO TEU SERVIDOR RENDER
     const MEU_SERVIDOR_RENDER = 'https://brawl-api-gqtp.onrender.com';
 
     const classAdvantages = {
@@ -152,7 +153,8 @@
 
     async function initAPI() {
       try {
-        const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers', { cache: 'no-store' });
+        // Pede tudo ao teu próprio servidor (Render)
+        const brawlersRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/brawlers`, { cache: 'no-store' });
         const brawlersData = await brawlersRes.json();
         
         if(brawlersData.list) {
@@ -166,10 +168,9 @@
 
         renderEnemyGrid(); renderFavoritesList();
 
-        const mapsRes = await fetch('https://api.brawlapi.com/v1/maps', { cache: 'no-store' });
-        const mapsData = await mapsRes.json();
-        state.allMapsList = mapsData.list || [];
-
+        // Para os mapas, vamos usar uma lista estática mínima caso a API falhe, 
+        // ou criar as opções com base na Rotação Oficial se não tivermos os dados completos da comunidade.
+        
         const rotRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/rotacao`, { cache: 'no-store' });
         const rotData = await rotRes.json();
 
@@ -180,24 +181,31 @@
             return;
         }
 
-        const activeMapIds = Array.isArray(rotData) ? rotData.map(ev => Number(ev.event.id)) : [];
-        
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
 
-        const activeMaps = state.allMapsList.filter(m => activeMapIds.includes(Number(m.id)));
-        if(activeMaps.length > 0) {
-          mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora (Oficial)">`;
-          activeMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">[Live] ${tradutorMapas[m.name] || m.name}</option>`);
-          mapSelect.innerHTML += `</optgroup>`;
+        if (Array.isArray(rotData) && rotData.length > 0) {
+            state.allMapsList = rotData.map(r => r.event); // Guarda a info básica dos eventos
+            
+            mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora (Oficial)">`;
+            rotData.forEach(ev => {
+               // A API oficial devolve ev.event.id (um ID gigante) e ev.event.map (o nome). 
+               // Como a BrawlAPI usa outro sistema de IDs, vamos mapear pelo Nome.
+               let mapName = ev.event.map;
+               mapSelect.innerHTML += `<option value="${mapName}">[Live] ${tradutorMapas[mapName] || mapName}</option>`;
+            });
+            mapSelect.innerHTML += `</optgroup>`;
+        } else {
+             mapSelect.innerHTML = '<option value="">Erro ao carregar mapas.</option>';
         }
+        
+        // Adiciona alguns mapas populares fixos para Tática Offline caso a API da comunidade falhe de vez
+        mapSelect.innerHTML += `<optgroup label="⚪ Mapas Populares (Tática)">`;
+        Object.values(mapDNA).forEach(m => {
+            mapSelect.innerHTML += `<option value="${m.name}">${m.name}</option>`;
+        });
+        mapSelect.innerHTML += `</optgroup>`;
 
-        const otherMaps = state.allMapsList.filter(m => !activeMapIds.includes(Number(m.id)));
-        if(otherMaps.length > 0) {
-          mapSelect.innerHTML += `<optgroup label="⚪ Todos os Mapas (Local)">`;
-          otherMaps.forEach(m => mapSelect.innerHTML += `<option value="${m.id}">${tradutorMapas[m.name] || m.name}</option>`);
-          mapSelect.innerHTML += `</optgroup>`;
-        }
 
         document.getElementById('api-status').innerText = '🟢 Servidor Próprio Online';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
@@ -206,45 +214,43 @@
       } catch (e) {
         document.getElementById('api-status').innerText = '🔴 Offline';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
+        console.error("Erro na inicialização:", e);
       }
     }
 
     async function fetchMapStats() {
       state.mapId = document.getElementById('map-select').value;
       const previewBox = document.getElementById('map-preview');
-      const imgEl = document.getElementById('map-img');
-
+      
       if (!state.mapId) { previewBox.classList.add('hidden'); return; }
 
-      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
-      if (selectedMap && selectedMap.imageUrl) {
-        imgEl.style.display = 'block'; imgEl.src = selectedMap.imageUrl;
-        previewBox.classList.remove('hidden');
-      } else {
-        previewBox.classList.add('hidden');
-      }
+      // Como já não estamos a usar a BrawlAPI para a lista mestra, escondemos o preview da imagem
+      previewBox.classList.add('hidden');
       
       document.getElementById('map-loading').style.display = 'block';
       
       try {
-        // A MÁGICA HÍBRIDA: Pede os Win Rates diretamente através do navegador do utilizador,
-        // fugindo completamente ao bloqueio de Cloudflare que o Render estava a sofrer.
-        const res = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`, { cache: 'no-store' });
+        // Pede as percentagens através do TEU servidor Render (que agora disfarça a origem)
+        // Tentamos localizar o ID numérico da BrawlAPI com base no nome do mapa
+        const res = await fetch(`${MEU_SERVIDOR_RENDER}/api/winrates/byName/${encodeURIComponent(state.mapId)}`, { cache: 'no-store' });
+        
+        if (!res.ok) throw new Error("Falha no proxy ou Cloudflare bloqueou o Render");
+        
         const data = await res.json();
         
         state.currentWinRates = {};
         state.isOfflineFallback = false;
 
         if (!data.stats || data.stats.length === 0) {
-          state.isOfflineFallback = true;
-          document.getElementById('fallback-badge').classList.remove('hidden');
-          state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawler: { name: b.name }, winRate: 50 }));
+          throw new Error("Estatísticas vazias");
         } else {
           document.getElementById('fallback-badge').classList.add('hidden');
           data.stats.forEach(s => { state.currentWinRates[s.brawler.name] = s.winRate; });
           state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate);
         }
       } catch(e) {
+        // Se a busca falhar (Render bloqueado ou API em baixo), Força Tática Offline
+        console.log("Acionando DNA Tático Offline:", e.message);
         state.isOfflineFallback = true;
         document.getElementById('fallback-badge').classList.remove('hidden');
         state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawler: { name: b.name }, winRate: 50 }));
@@ -372,10 +378,18 @@
       if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
 
-      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
-      const normalizedMapName = selectedMap ? normalizeStr(selectedMap.name) : "";
-      const dna = mapDNA[normalizedMapName]; 
-
+      // Extrai o nome base do mapa para comparar com o nosso DNA Tático (remove acentos e espaços)
+      const mapNameClean = state.mapId.replace(/[^a-zA-Z]/g, "").toLowerCase();
+      
+      // Procura se temos esse mapa no nosso DNA Tático para dar bónus extra
+      let dna = null;
+      for (const [key, value] of Object.entries(mapDNA)) {
+          if (value.name.replace(/[^a-zA-Z]/g, "").toLowerCase() === mapNameClean) {
+              dna = value;
+              break;
+          }
+      }
+      
       let candidatos = state.mapTopBrawlers.map(apiB => {
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
         let scoreFinal = apiB.winRate; 
