@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Servidor Privado Total</title>
+  <title>Brawl Draft Pro - Servidor Privado</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -30,7 +30,7 @@
     <header class="flex justify-between items-center mb-4">
       <h1 class="text-xl font-bold text-yellow-400">Brawl Draft</h1>
       <div class="flex items-center gap-2">
-        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Conectando Servidor...</div>
+        <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Conectando...</div>
         <button onclick="toggleSidebar()" class="bg-slate-800 p-2 rounded text-xl border border-slate-600 hover:bg-slate-700">⭐</button>
       </div>
     </header>
@@ -47,10 +47,12 @@
           <option value="">Aguardando servidor...</option>
         </select>
         
+        <div id="status-detalhe" class="text-[10px] text-gray-400 mt-1">Selecione um mapa para buscar os Win Rates.</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Sincronizando estatísticas...</div>
+
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
           <img id="map-img" src="" class="h-32 object-contain" alt="Mapa" onerror="this.style.display='none'">
         </div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Sincronizando estatísticas...</div>
       </div>
 
       <div id="draft-area" class="space-y-4">
@@ -120,7 +122,6 @@
   </div>
 
   <script>
-    // A URL DO TEU SERVIDOR RENDER
     const MEU_SERVIDOR_RENDER = 'https://brawl-api-gqtp.onrender.com';
 
     const classAdvantages = {
@@ -130,16 +131,17 @@
     };
 
     const mapDNA = {
-      "snakeprairie": { name: "Pradaria da Serpente", boost: ["Tank", "Assassin", "Support"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky"] },
-      "cavernchurn": { name: "Caverna Convulsiva", boost: ["Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Rico", "Dynamike"] },
-      "shootingstar": { name: "Tiro Aberto", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Piper", "Nani", "Mandy"] },
-      "outintheopen": { name: "Ao Ar Livre", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Angelo", "Piper"] },
-      "ringoffire": { name: "Anel de Fogo", boost: ["Controller", "Artillery"], punish: ["Assassin"], specificBoost: [] },
-      "hardrockmine": { name: "Mina Rochosa", boost: ["Controller", "Damage Dealer"], punish: [], specificBoost: ["Sandy"] },
-      "crystalarcade": { name: "Fliperama de Cristal", boost: ["Marksman", "Assassin"], punish: ["Tank"], specificBoost: [] },
-      "stonefort": { name: "Forte de Pedra", boost: ["Artillery", "Controller"], punish: ["Assassin"], specificBoost: ["Barley", "Tick"] }
+      "snakeprairie": { name: "Pradaria da Serpente", boost: ["Tank", "Assassin", "Support"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky", "Buzz"] },
+      "cavernchurn": { name: "Caverna Convulsiva", boost: ["Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Rico", "Dynamike", "Bo", "Bull"] },
+      "shootingstar": { name: "Tiro Aberto", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Piper", "Nani", "Mandy", "Angelo", "Belle"] },
+      "outintheopen": { name: "Ao Ar Livre", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Angelo", "Piper", "Brock", "Eve"] },
+      "ringoffire": { name: "Anel de Fogo", boost: ["Controller", "Artillery"], punish: ["Assassin"], specificBoost: ["Lou", "Penny", "Jessie", "Sandy"] },
+      "hardrockmine": { name: "Mina Rochosa", boost: ["Controller", "Damage Dealer"], punish: [], specificBoost: ["Sandy", "Rico", "Gene", "Tara"] },
+      "crystalarcade": { name: "Fliperama de Cristal", boost: ["Marksman", "Assassin"], punish: ["Tank"], specificBoost: ["Gene", "Janet", "Max"] },
+      "stonefort": { name: "Forte de Pedra", boost: ["Artillery", "Controller"], punish: ["Assassin"], specificBoost: ["Barley", "Tick", "L&L"] }
     };
 
+    const tradutorModos = { "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo", "bounty": "Caça-Estrelas", "brawlBall": "Fute-Brawl", "gemGrab": "Pique-Gema", "heist": "Roubo", "hotZone": "Zona Estratégica", "knockout": "Nocaute", "wipeout": "Extermínio" };
     const tradutorMapas = { "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca", "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto", "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada", "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central", "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura", "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes", "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm", "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva", "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central", "Stone Fort": "Forte de Pedra" };
 
     let state = {
@@ -149,115 +151,187 @@
     };
 
     function getFallbackAvatar(name) { return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=e2e8f0&size=128`; }
-    function normalizeStr(str) { return str.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }
+    function normalizeStr(str) { return (str || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }
+    function formatMapLabel(mode, mapName) {
+      const m = tradutorModos[mode] || mode || "Evento";
+      const n = tradutorMapas[mapName] || mapName;
+      return `[${m}] ${n}`;
+    }
 
     async function initAPI() {
+      const statusDetalhe = document.getElementById('status-detalhe');
       try {
-        // Pede tudo ao teu próprio servidor (Render)
-        const brawlersRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/brawlers`, { cache: 'no-store' });
-        const brawlersData = await brawlersRes.json();
+        // 1. Carrega Brawlers guardando o ID numérico (essencial para cruzar com os stats da BrawlAPI)
+        let brawlersData;
+        try {
+          const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers', { cache: 'no-store' });
+          brawlersData = await brawlersRes.json();
+        } catch (err) {
+          const brawlersRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/brawlers`, { cache: 'no-store' });
+          brawlersData = await brawlersRes.json();
+        }
         
-        if(brawlersData.list) {
+        if(brawlersData && brawlersData.list) {
           state.allBrawlers = brawlersData.list.map(b => ({
-            name: b.name, image: b.imageUrl2 || b.imageUrl, className: b.class.name,
-            gadget: b.gadgets.length > 0 ? b.gadgets[0] : null,
-            starPower: b.starPowers.length > 0 ? b.starPowers[0] : null,
+            id: Number(b.id),
+            name: b.name,
+            image: b.imageUrl2 || b.imageUrl,
+            className: b.class ? b.class.name : 'Damage Dealer',
+            gadget: b.gadgets && b.gadgets.length > 0 ? b.gadgets[0] : null,
+            starPower: b.starPowers && b.starPowers.length > 0 ? b.starPowers[0] : null,
             gears: b.gears || []
           })).sort((a, b) => a.name.localeCompare(b.name));
         }
 
-        renderEnemyGrid(); renderFavoritesList();
+        renderEnemyGrid();
+        renderFavoritesList();
 
-        // Para os mapas, vamos usar uma lista estática mínima caso a API falhe, 
-        // ou criar as opções com base na Rotação Oficial se não tivermos os dados completos da comunidade.
-        
+        // 2. Carrega catálogo de Mapas da BrawlAPI (com imagens e IDs)
+        try {
+          const mapsRes = await fetch('https://api.brawlapi.com/v1/maps', { cache: 'no-store' });
+          const mapsData = await mapsRes.json();
+          state.allMapsList = mapsData.list || [];
+        } catch (e) {
+          state.allMapsList = [];
+        }
+
+        // 3. Carrega Rotação Oficial da Supercell via Render
         const rotRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/rotacao`, { cache: 'no-store' });
         const rotData = await rotRes.json();
 
         if (rotData.error && rotData.error.includes("SUPERCELL_TOKEN")) {
-            document.getElementById('api-status').innerText = '⚠️ Token Ausente no Render';
-            document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
-            document.getElementById('api-status').classList.remove('animate-pulse');
-            return;
+          document.getElementById('api-status').innerText = '⚠️ Token Ausente no Render';
+          document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
+          document.getElementById('api-status').classList.remove('animate-pulse');
+          return;
+        }
+
+        const activeMapIds = new Set();
+        const activeMapNames = new Set();
+
+        if (Array.isArray(rotData)) {
+          rotData.forEach(ev => {
+            if (ev.event) {
+              if (ev.event.id) activeMapIds.add(Number(ev.event.id));
+              if (ev.event.map) activeMapNames.add(normalizeStr(ev.event.map));
+              // Se o mapa oficial não existir na lista da BrawlAPI, injeta na lista
+              const exists = state.allMapsList.some(m => Number(m.id) === Number(ev.event.id) || normalizeStr(m.name) === normalizeStr(ev.event.map));
+              if (!exists && ev.event.id && ev.event.map) {
+                state.allMapsList.push({
+                  id: Number(ev.event.id),
+                  name: ev.event.map,
+                  gameMode: { name: ev.event.mode || "Live" },
+                  imageUrl: `https://cdn.brawlify.com/maps/regular/${ev.event.id}.png`
+                });
+              }
+            }
+          });
         }
 
         const mapSelect = document.getElementById('map-select');
         mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
 
-        if (Array.isArray(rotData) && rotData.length > 0) {
-            state.allMapsList = rotData.map(r => r.event); // Guarda a info básica dos eventos
-            
-            mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora (Oficial)">`;
-            rotData.forEach(ev => {
-               // A API oficial devolve ev.event.id (um ID gigante) e ev.event.map (o nome). 
-               // Como a BrawlAPI usa outro sistema de IDs, vamos mapear pelo Nome.
-               let mapName = ev.event.map;
-               mapSelect.innerHTML += `<option value="${mapName}">[Live] ${tradutorMapas[mapName] || mapName}</option>`;
-            });
-            mapSelect.innerHTML += `</optgroup>`;
-        } else {
-             mapSelect.innerHTML = '<option value="">Erro ao carregar mapas.</option>';
+        const activeMaps = state.allMapsList.filter(m => activeMapIds.has(Number(m.id)) || activeMapNames.has(normalizeStr(m.name)));
+        if (activeMaps.length > 0) {
+          mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora (Oficial Supercell)">`;
+          activeMaps.forEach(m => {
+            const modeName = m.gameMode ? m.gameMode.name : 'Live';
+            mapSelect.innerHTML += `<option value="${m.id}">${formatMapLabel(modeName, m.name)}</option>`;
+          });
+          mapSelect.innerHTML += `</optgroup>`;
         }
-        
-        // Adiciona alguns mapas populares fixos para Tática Offline caso a API da comunidade falhe de vez
-        mapSelect.innerHTML += `<optgroup label="⚪ Mapas Populares (Tática)">`;
-        Object.values(mapDNA).forEach(m => {
-            mapSelect.innerHTML += `<option value="${m.name}">${m.name}</option>`;
-        });
-        mapSelect.innerHTML += `</optgroup>`;
 
+        const otherMaps = state.allMapsList.filter(m => !activeMapIds.has(Number(m.id)) && !activeMapNames.has(normalizeStr(m.name)));
+        if (otherMaps.length > 0) {
+          mapSelect.innerHTML += `<optgroup label="⚪ Todos os Mapas">`;
+          otherMaps.forEach(m => {
+            const modeName = m.gameMode ? m.gameMode.name : 'Mapa';
+            mapSelect.innerHTML += `<option value="${m.id}">${formatMapLabel(modeName, m.name)}</option>`;
+          });
+          mapSelect.innerHTML += `</optgroup>`;
+        }
 
         document.getElementById('api-status').innerText = '🟢 Servidor Próprio Online';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
         document.getElementById('api-status').classList.remove('animate-pulse');
-        
+        statusDetalhe.innerText = `✅ ${activeMaps.length} mapas ao vivo carregados da Supercell.`;
       } catch (e) {
-        document.getElementById('api-status').innerText = '🔴 Offline';
+        document.getElementById('api-status').innerText = '🔴 Erro de Conexão';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
-        console.error("Erro na inicialização:", e);
+        statusDetalhe.innerText = `❌ Falha ao iniciar: ${e.message}`;
       }
     }
 
     async function fetchMapStats() {
       state.mapId = document.getElementById('map-select').value;
       const previewBox = document.getElementById('map-preview');
-      
+      const imgEl = document.getElementById('map-img');
+      const statusDetalhe = document.getElementById('status-detalhe');
+
       if (!state.mapId) { previewBox.classList.add('hidden'); return; }
 
-      // Como já não estamos a usar a BrawlAPI para a lista mestra, escondemos o preview da imagem
-      previewBox.classList.add('hidden');
-      
-      document.getElementById('map-loading').style.display = 'block';
-      
-      try {
-        // Pede as percentagens através do TEU servidor Render (que agora disfarça a origem)
-        // Tentamos localizar o ID numérico da BrawlAPI com base no nome do mapa
-        const res = await fetch(`${MEU_SERVIDOR_RENDER}/api/winrates/byName/${encodeURIComponent(state.mapId)}`, { cache: 'no-store' });
-        
-        if (!res.ok) throw new Error("Falha no proxy ou Cloudflare bloqueou o Render");
-        
-        const data = await res.json();
-        
-        state.currentWinRates = {};
-        state.isOfflineFallback = false;
-
-        if (!data.stats || data.stats.length === 0) {
-          throw new Error("Estatísticas vazias");
-        } else {
-          document.getElementById('fallback-badge').classList.add('hidden');
-          data.stats.forEach(s => { state.currentWinRates[s.brawler.name] = s.winRate; });
-          state.mapTopBrawlers = data.stats.sort((a, b) => b.winRate - a.winRate);
-        }
-      } catch(e) {
-        // Se a busca falhar (Render bloqueado ou API em baixo), Força Tática Offline
-        console.log("Acionando DNA Tático Offline:", e.message);
-        state.isOfflineFallback = true;
-        document.getElementById('fallback-badge').classList.remove('hidden');
-        state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawler: { name: b.name }, winRate: 50 }));
+      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
+      if (selectedMap && selectedMap.imageUrl) {
+        imgEl.style.display = 'block';
+        imgEl.src = selectedMap.imageUrl;
+        previewBox.classList.remove('hidden');
+      } else {
+        previewBox.classList.add('hidden');
       }
       
-      document.getElementById('map-loading').style.display = 'none';
-      renderEnemyGrid(); renderFavoritesList();
+      document.getElementById('map-loading').classList.remove('hidden');
+      
+      let data = null;
+      try {
+        // Tentativa 1: Direto no navegador para a BrawlAPI
+        const resDireta = await fetch(`https://api.brawlapi.com/v1/maps/${state.mapId}`, { cache: 'no-store' });
+        if (resDireta.ok) data = await resDireta.json();
+      } catch (e) {}
+
+      // Tentativa 2: Via Servidor Render caso a direta falhe
+      if (!data || !data.stats) {
+        try {
+          const resRender = await fetch(`${MEU_SERVIDOR_RENDER}/api/winrates/${state.mapId}`, { cache: 'no-store' });
+          if (resRender.ok) data = await resRender.json();
+        } catch (e) {}
+      }
+
+      state.currentWinRates = {};
+      state.isOfflineFallback = false;
+
+      // Traduz o ID numérico do brawler (s.brawler = 16000000) para o nome real do brawler
+      const validStats = [];
+      if (data && Array.isArray(data.stats) && data.stats.length > 0) {
+        data.stats.forEach(s => {
+          const bId = typeof s.brawler === 'object' ? Number(s.brawler.id) : Number(s.brawler);
+          const bName = typeof s.brawler === 'object' && s.brawler.name ? s.brawler.name : null;
+          const bInfo = state.allBrawlers.find(b => b.id === bId || (bName && b.name === bName));
+
+          if (bInfo && s.winRate !== undefined) {
+            const wr = Math.round(Number(s.winRate) * 10) / 10;
+            state.currentWinRates[bInfo.name] = wr;
+            validStats.push({ brawlerName: bInfo.name, winRate: wr, useRate: Number(s.useRate || 0) });
+          }
+        });
+      }
+
+      if (validStats.length > 0) {
+        document.getElementById('fallback-badge').classList.add('hidden');
+        state.mapTopBrawlers = validStats.sort((a, b) => b.winRate - a.winRate);
+        statusDetalhe.innerText = `✅ Win Rates reais carregados (${validStats.length} brawlers analisados).`;
+        statusDetalhe.className = 'text-[10px] text-green-400 mt-1';
+      } else {
+        state.isOfflineFallback = true;
+        document.getElementById('fallback-badge').classList.remove('hidden');
+        state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawlerName: b.name, winRate: 50, useRate: 0 }));
+        const rawCount = (data && Array.isArray(data.stats)) ? data.stats.length : 'erro';
+        statusDetalhe.innerText = `⚠️ BrawlAPI devolveu stats vazios (${rawCount} itens) para o mapa #${state.mapId}. Modo Tático ativo.`;
+        statusDetalhe.className = 'text-[10px] text-purple-300 mt-1';
+      }
+      
+      document.getElementById('map-loading').classList.add('hidden');
+      renderEnemyGrid();
+      renderFavoritesList();
       if(state.myPick) renderTargetAnalysis(); else updateRecommendations();
     }
 
@@ -378,32 +452,36 @@
       if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
       if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
 
-      // Extrai o nome base do mapa para comparar com o nosso DNA Tático (remove acentos e espaços)
-      const mapNameClean = state.mapId.replace(/[^a-zA-Z]/g, "").toLowerCase();
-      
-      // Procura se temos esse mapa no nosso DNA Tático para dar bónus extra
-      let dna = null;
-      for (const [key, value] of Object.entries(mapDNA)) {
-          if (value.name.replace(/[^a-zA-Z]/g, "").toLowerCase() === mapNameClean) {
-              dna = value;
-              break;
-          }
-      }
-      
+      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
+      const normalizedMapName = selectedMap ? normalizeStr(selectedMap.name) : "";
+      const dna = mapDNA[normalizedMapName];
+
       let candidatos = state.mapTopBrawlers.map(apiB => {
-        let bInfo = state.allBrawlers.find(b => b.name === apiB.brawler.name);
+        let bInfo = state.allBrawlers.find(b => b.name === apiB.brawlerName);
         let scoreFinal = apiB.winRate; 
         let tagsAtivas = [];
 
-        if (state.isOfflineFallback && dna && bInfo) {
-          if (dna.boost.includes(bInfo.className)) { scoreFinal += 20; tagsAtivas.push('👍 Vantagem'); }
-          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += 30; tagsAtivas.push('👑 Meta'); }
-          if (dna.punish.includes(bInfo.className)) { scoreFinal -= 40; tagsAtivas.push('❌ Ruim aqui'); }
+        if (state.isOfflineFallback && bInfo) {
+          if (dna) {
+            if (dna.boost.includes(bInfo.className)) { scoreFinal += 20; tagsAtivas.push('👍 Vantagem'); }
+            if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += 30; tagsAtivas.push('👑 Meta'); }
+            if (dna.punish.includes(bInfo.className)) { scoreFinal -= 40; tagsAtivas.push('❌ Ruim aqui'); }
+          } else if (selectedMap && selectedMap.gameMode) {
+            // Inteligência por Modo de Jogo caso o mapa não esteja no mapDNA
+            const mode = normalizeStr(selectedMap.gameMode.name);
+            if ((mode.includes('bounty') || mode.includes('knockout') || mode.includes('wipeout')) && bInfo.className === 'Marksman') {
+              scoreFinal += 15; tagsAtivas.push('🎯 Bom no Modo');
+            } else if ((mode.includes('brawlball') || mode.includes('hotzone') || mode.includes('gemgrab')) && (bInfo.className === 'Controller' || bInfo.className === 'Tank')) {
+              scoreFinal += 15; tagsAtivas.push('🛡️ Bom no Modo');
+            } else if (mode.includes('heist') && (bInfo.className === 'Damage Dealer' || bInfo.className === 'Artillery')) {
+              scoreFinal += 15; tagsAtivas.push('💥 Dano ao Cofre');
+            }
+          }
         }
 
         return { 
-          name: apiB.brawler.name, image: bInfo ? bInfo.image : '', className: bInfo ? bInfo.className : '', 
-          isFav: state.favorites.includes(apiB.brawler.name), score: scoreFinal, baseWr: apiB.winRate, tags: tagsAtivas
+          name: apiB.brawlerName, image: bInfo ? bInfo.image : '', className: bInfo ? bInfo.className : '', 
+          isFav: state.favorites.includes(apiB.brawlerName), score: Math.round(scoreFinal * 10) / 10, baseWr: apiB.winRate, tags: tagsAtivas
         };
       });
 
@@ -415,13 +493,14 @@
               const enemyClass = state.allBrawlers.find(e => e.name === enemyName)?.className;
               if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) {
                 c.score += state.isOfflineFallback ? 15 : 2; 
-                if (state.isOfflineFallback && !c.tags.includes('🎯 Countera')) c.tags.push('🎯 Countera');
+                if (!c.tags.includes('🎯 Countera')) c.tags.push('🎯 Countera');
               }
               if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) {
                 c.score -= state.isOfflineFallback ? 20 : 5; 
-                if (state.isOfflineFallback && !c.tags.includes('⚠️ Apanha')) c.tags.push('⚠️ Apanha');
+                if (!c.tags.includes('⚠️ Apanha')) c.tags.push('⚠️ Apanha');
               }
             });
+            c.score = Math.round(c.score * 10) / 10;
           });
         }
       }
@@ -436,7 +515,7 @@
           : `<span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50 font-bold whitespace-nowrap">WR: ${b.baseWr}%</span>`;
 
         let htmlTags = '';
-        if (state.isOfflineFallback && b.tags.length > 0) {
+        if (b.tags.length > 0) {
            htmlTags = `<div class="flex gap-1 mt-1">` + b.tags.map(t => `<span class="text-[8px] bg-slate-800 text-gray-400 px-1 rounded border border-slate-700">${t}</span>`).join('') + `</div>`;
         }
 
