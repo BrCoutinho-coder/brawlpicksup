@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brawl Draft Pro - Servidor Privado</title>
+  <title>Brawl Draft Pro - Motor Profissional</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #121826; color: #e2e8f0; overflow-x: hidden; }
@@ -28,7 +28,7 @@
 
   <div class="w-full max-w-md p-4">
     <header class="flex justify-between items-center mb-4">
-      <h1 class="text-xl font-bold text-yellow-400">Brawl Draft</h1>
+      <h1 class="text-xl font-bold text-yellow-400">Brawl Draft Pro</h1>
       <div class="flex items-center gap-2">
         <div id="api-status" class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-600 text-white animate-pulse">🟡 Conectando...</div>
         <button onclick="toggleSidebar()" class="bg-slate-800 p-2 rounded text-xl border border-slate-600 hover:bg-slate-700">⭐</button>
@@ -36,8 +36,8 @@
     </header>
 
     <div class="flex bg-slate-800 rounded-lg p-1 mb-4 border border-slate-700">
-      <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual</button>
-      <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada</button>
+      <button id="mode-casual" onclick="setMode('casual')" class="flex-1 py-1 text-sm font-bold rounded-md transition text-gray-400">Casual (C-)</button>
+      <button id="mode-ranked" onclick="setMode('ranked')" class="flex-1 py-1 text-sm font-bold rounded-md bg-yellow-500 text-slate-900 transition shadow">Ranqueada (R-)</button>
     </div>
 
     <main class="space-y-4">
@@ -47,8 +47,8 @@
           <option value="">Aguardando servidor...</option>
         </select>
         
-        <div id="status-detalhe" class="text-[10px] text-gray-400 mt-1">Selecione um mapa para buscar os Win Rates.</div>
-        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando estatísticas oficiais (Top Global/BR)...</div>
+        <div id="status-detalhe" class="text-[10px] text-gray-400 mt-1">Selecione um mapa para calcular o Meta Score.</div>
+        <div id="map-loading" class="text-[10px] text-blue-400 hidden mt-1">Calculando Meta Score (Win Rate + Taxa de Uso)...</div>
 
         <div id="map-preview" class="hidden mt-3 rounded-lg border border-slate-600 overflow-hidden relative bg-slate-900 flex justify-center">
           <img id="map-img" src="" class="h-32 object-contain" alt="Mapa" onerror="this.style.display='none'">
@@ -84,24 +84,43 @@
           <button onclick="unlockPick()" class="text-[10px] bg-slate-700 px-2 py-1 rounded hover:bg-slate-600">Trocar</button>
         </div>
         
-        <div class="flex gap-4">
-          <img id="locked-img" src="" class="w-16 h-16 rounded-lg border border-slate-500 bg-slate-900 shadow-lg">
-          <div class="flex-1 space-y-2">
-            <div class="bg-slate-800/80 p-2 rounded border border-slate-600">
-              <p class="text-[10px] text-gray-400 font-bold mb-1">Build Recomendada:</p>
-              <div class="flex items-center gap-2 mb-1">
-                <img id="locked-gadget-img" src="" class="w-4 h-4 rounded-full bg-black">
-                <span id="locked-gadget-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
+        <div class="flex gap-3">
+          <img id="locked-img" src="" class="w-16 h-16 rounded-lg border border-slate-500 bg-slate-900 shadow-lg shrink-0">
+          <div class="flex-1 space-y-2 min-w-0">
+            <div class="bg-slate-800/80 p-2.5 rounded border border-slate-600 space-y-1.5">
+              <p class="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Build Ideal (Mapa + Adversários):</p>
+              
+              <div class="flex items-center gap-2">
+                <img id="locked-gadget-img" src="" class="w-5 h-5 rounded-full bg-black shrink-0">
+                <div class="min-w-0">
+                  <span class="text-[8px] text-green-400 font-bold uppercase block">Acessório:</span>
+                  <span id="locked-gadget-name" class="text-[10px] text-white font-semibold block truncate"></span>
+                </div>
               </div>
-              <div class="flex items-center gap-2 mb-2">
-                <img id="locked-sp-img" src="" class="w-4 h-4 rounded-full bg-black">
-                <span id="locked-sp-name" class="text-[9px] text-white truncate max-w-[120px]"></span>
+
+              <div class="flex items-center gap-2">
+                <img id="locked-sp-img" src="" class="w-5 h-5 rounded-full bg-black shrink-0">
+                <div class="min-w-0">
+                  <span class="text-[8px] text-yellow-400 font-bold uppercase block">Poder de Estrela:</span>
+                  <span id="locked-sp-name" class="text-[10px] text-white font-semibold block truncate"></span>
+                </div>
               </div>
-              <div class="flex items-center gap-2 border-t border-slate-600 pt-1">
-                <span class="text-[8px] text-gray-500 font-bold uppercase">Gears:</span>
-                <img id="locked-gear1-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
-                <img id="locked-gear2-img" src="" class="w-4 h-4 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
+
+              <div class="border-t border-slate-700 pt-1.5 mt-1">
+                <span class="text-[8px] text-blue-400 font-bold uppercase block mb-1">Melhores Engrenagens:</span>
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-1">
+                    <img id="locked-gear1-img" src="" class="w-5 h-5 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
+                    <span id="locked-gear1-name" class="text-[9px] text-gray-200 font-medium"></span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <img id="locked-gear2-img" src="" class="w-5 h-5 rounded border border-slate-700 bg-slate-900 hidden" onerror="this.classList.add('hidden')">
+                    <span id="locked-gear2-name" class="text-[9px] text-gray-200 font-medium"></span>
+                  </div>
+                </div>
               </div>
+
+              <div id="locked-build-reason" class="text-[9px] text-blue-300 bg-slate-900/90 p-1.5 rounded border border-slate-700 leading-tight mt-1"></div>
             </div>
           </div>
         </div>
@@ -111,10 +130,10 @@
 
       <div id="suggestions-area" class="mt-4">
         <div class="flex justify-between items-end mb-2 border-b border-green-800 pb-1">
-          <h2 class="text-lg font-bold text-green-400">Sugestões de Pick:</h2>
-          <span id="fallback-badge" class="hidden text-[8px] bg-purple-900 text-purple-300 px-1.5 py-0.5 rounded border border-purple-700">Tática Pura (Offline)</span>
+          <h2 class="text-lg font-bold text-green-400">Melhores Escolhas (Pro Calc):</h2>
+          <span id="fallback-badge" class="hidden text-[8px] bg-purple-900 text-purple-300 px-1.5 py-0.5 rounded border border-purple-700">Tática Pura</span>
         </div>
-        <p class="text-[10px] text-gray-400 mb-2">Clique em um brawler para travar sua escolha.</p>
+        <p class="text-[10px] text-gray-400 mb-2">Ordenado por Nota Pro (Win Rate + Taxa de Uso + Terreno + Counters).</p>
         <div id="results" class="space-y-2"></div>
       </div>
 
@@ -124,44 +143,285 @@
   <script>
     const MEU_SERVIDOR_RENDER = 'https://brawl-api-gqtp.onrender.com';
 
+    // Vantagens de classe
     const classAdvantages = {
-      "Assassin": ["Artillery", "Marksman"], "Tank": ["Assassin"], "Artillery": ["Tank", "Controller"],
-      "Marksman": ["Controller", "Damage Dealer", "Tank"], "Controller": ["Assassin", "Tank"],
-      "Damage Dealer": ["Tank", "Assassin"], "Support": []
+      "Assassin": ["Artillery", "Marksman"],
+      "Tank": ["Assassin"],
+      "Artillery": ["Tank", "Controller"],
+      "Marksman": ["Controller", "Damage Dealer", "Tank"],
+      "Controller": ["Assassin", "Tank"],
+      "Damage Dealer": ["Tank", "Assassin"],
+      "Support": ["Tank"]
     };
 
-    const mapDNA = {
-      "snakeprairie": { name: "Pradaria da Serpente", boost: ["Tank", "Assassin", "Support"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky", "Buzz"] },
-      "cavernchurn": { name: "Caverna Convulsiva", boost: ["Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Rico", "Dynamike", "Bo", "Bull"] },
-      "shootingstar": { name: "Tiro Aberto", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Piper", "Nani", "Mandy", "Angelo", "Belle"] },
-      "outintheopen": { name: "Ao Ar Livre", boost: ["Marksman", "Damage Dealer"], punish: ["Tank"], specificBoost: ["Angelo", "Piper", "Brock", "Eve"] },
-      "ringoffire": { name: "Anel de Fogo", boost: ["Controller", "Artillery"], punish: ["Assassin"], specificBoost: ["Lou", "Penny", "Jessie", "Sandy"] },
-      "hardrockmine": { name: "Mina Rochosa", boost: ["Controller", "Damage Dealer"], punish: [], specificBoost: ["Sandy", "Rico", "Gene", "Tara"] },
-      "crystalarcade": { name: "Fliperama de Cristal", boost: ["Marksman", "Assassin"], punish: ["Tank"], specificBoost: ["Gene", "Janet", "Max"] },
-      "stonefort": { name: "Forte de Pedra", boost: ["Artillery", "Controller"], punish: ["Assassin"], specificBoost: ["Barley", "Tick", "L&L"] }
+    // Counters específicos de alto nível (Brawler -> Quem ele anula fortemente)
+    const hardCounters = {
+      "Colette": ["Frank", "Bull", "El Primo", "Rosa", "Draco", "Darryl", "Meg"],
+      "Rico": ["Frank", "Bull", "Jacky", "Doug", "Rosa"],
+      "Gale": ["Mortis", "Edgar", "Buzz", "Fang", "Lily", "Bull", "Primo"],
+      "Clancy": ["Frank", "Rosa", "Draco", "Bull", "Jacky", "Ash"],
+      "Chester": ["Rosa", "Bull", "Buzz", "Fang", "Edgar"],
+      "Surge": ["Mortis", "Edgar", "Fang", "Buzz", "Jacky"],
+      "Mico": ["Barley", "Tick", "Dynamike", "Sprout", "Grom"],
+      "Mortis": ["Barley", "Tick", "Dynamike", "Sprout", "Grom", "Piper", "Mandy"],
+      "Piper": ["Belle", "Brock", "Bea", "Colt", "8-Bit"],
+      "Nani": ["Piper", "Angelo", "Mandy", "Brock", "Bea"],
+      "Belle": ["Jessie", "Penny", "Tara", "Mr. P"]
     };
+
+    // DNA detalhado dos mapas (tags de terreno: bushy = muita relva, open = aberto, walled = muitas paredes)
+    const mapDNA = {
+      "snakeprairie": { name: "Pradaria da Serpente", terrain: ["bushy"], boost: ["Tank", "Assassin", "Support"], punish: ["Marksman", "Artillery"], specificBoost: ["Bo", "Tara", "Rosa", "Jacky", "Buzz", "Shelly"] },
+      "cavernchurn": { name: "Caverna Convulsiva", terrain: ["bushy", "walled"], boost: ["Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Rico", "Dynamike", "Bo", "Bull", "Shelly"] },
+      "shootingstar": { name: "Tiro Aberto", terrain: ["open"], boost: ["Marksman"], punish: ["Tank", "Assassin"], specificBoost: ["Piper", "Nani", "Mandy", "Angelo", "Belle", "Brock"] },
+      "outintheopen": { name: "Ao Ar Livre", terrain: ["open"], boost: ["Marksman"], punish: ["Tank"], specificBoost: ["Angelo", "Piper", "Brock", "Eve", "Nani"] },
+      "ringoffire": { name: "Anel de Fogo", terrain: ["open", "bushy"], boost: ["Controller", "Marksman"], punish: ["Tank"], specificBoost: ["Lou", "Penny", "Jessie", "Sandy", "Amber", "Meg"] },
+      "hardrockmine": { name: "Mina Rochosa", terrain: ["bushy", "walled"], boost: ["Controller", "Damage Dealer", "Assassin"], punish: [], specificBoost: ["Sandy", "Rico", "Gene", "Tara", "Surge"] },
+      "doubleswoosh": { name: "Bote Duplo", terrain: ["bushy"], boost: ["Controller", "Tank", "Damage Dealer"], punish: ["Artillery"], specificBoost: ["Gene", "Sandy", "Tara", "Amber", "Rosa", "Crow"] },
+      "undermine": { name: "Mina Subterrânea", terrain: ["bushy", "walled"], boost: ["Controller", "Damage Dealer"], punish: [], specificBoost: ["Rico", "Sandy", "Gene", "Chester", "Buster"] },
+      "crystalarcade": { name: "Fliperama de Cristal", terrain: ["walled"], boost: ["Controller", "Damage Dealer"], punish: [], specificBoost: ["Gene", "Janet", "Max", "Rico"] },
+      "stonefort": { name: "Forte de Pedra", terrain: ["walled", "bushy"], boost: ["Artillery", "Controller", "Tank"], punish: ["Marksman"], specificBoost: ["Barley", "Tick", "Rico"] },
+      "bellesrock": { name: "Rocha da Belle", terrain: ["walled", "open"], boost: ["Marksman", "Artillery"], punish: ["Tank"], specificBoost: ["Grom", "Sprout", "Tick", "Piper", "Angelo", "Belle"] },
+      "flaringphoenix": { name: "Fênix Flamejante", terrain: ["walled", "bushy"], boost: ["Artillery", "Marksman", "Assassin"], punish: ["Tank"], specificBoost: ["Mandy", "Grom", "Tick", "Gene", "Piper"] },
+      "goldarmgulch": { name: "Ravina Goldarm", terrain: ["open", "walled"], boost: ["Marksman", "Artillery"], punish: ["Tank"], specificBoost: ["Piper", "Belle", "Nani", "Tick", "Angelo"] },
+      "safezone": { name: "Zona Segura", terrain: ["open"], boost: ["Damage Dealer", "Marksman"], punish: ["Tank"], specificBoost: ["Colette", "Colt", "Angelo", "Melody", "Chuck", "Jessie"] },
+      "kaboomcanyon": { name: "Cânion Cabum", terrain: ["open", "bushy"], boost: ["Damage Dealer", "Marksman"], punish: ["Tank"], specificBoost: ["Colette", "Colt", "Crow", "Belle", "Chuck", "Amber"] },
+      "hotpotato": { name: "Batata Quente", terrain: ["walled", "bushy"], boost: ["Damage Dealer", "Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Rico", "Barley", "Berry", "Colette", "Nita", "Bull"] },
+      "duelingbeetles": { name: "Besouros Duelantes", terrain: ["walled"], boost: ["Controller", "Artillery", "Tank"], punish: ["Marksman"], specificBoost: ["Lou", "Barley", "Jessie", "Penny", "Draco", "Stu"] },
+      "openplaza": { name: "Praça Aberta", terrain: ["open"], boost: ["Controller", "Marksman"], punish: ["Tank"], specificBoost: ["Meg", "Amber", "Lou", "Belle", "Gray"] },
+      "centerstage": { name: "Palco Central", terrain: ["bushy", "walled"], boost: ["Tank", "Damage Dealer", "Controller"], punish: ["Marksman"], specificBoost: ["Rico", "Frank", "Rosa", "Surge", "Gale", "Colette"] },
+      "pinballdreams": { name: "Sonhos de Pinball", terrain: ["walled"], boost: ["Damage Dealer", "Controller", "Tank"], punish: ["Artillery"], specificBoost: ["Rico", "Stu", "Gale", "Frank", "Max"] }
+    };
+
+    // Modos e Mapas que fazem parte da Ranqueada (recebem R-)
+    const modosRanqueada = ["bounty", "brawlball", "gemgrab", "heist", "hotzone", "knockout"];
+    const mapasRanqueadaNomes = new Set([
+      "shootingstar", "snakeprairie", "hardrockmine", "crystalarcade", "undermine", "doubleswoosh",
+      "centerstage", "flaringphoenix", "bellesrock", "safezone", "hotpotato", "kaboomcanyon",
+      "duelingbeetles", "ringoffire", "openplaza", "goldarmgulch", "pinballdreams", "outintheopen",
+      "newperspective", "goalkeepersdream", "centerfield", "stonefort", "hideout", "canalgrande",
+      "parallelplays", "bridge2far", "laststop"
+    ]);
 
     const tradutorModos = { "Bounty": "Caça-Estrelas", "Brawl Ball": "Fute-Brawl", "Gem Grab": "Pique-Gema", "Heist": "Roubo", "Hot Zone": "Zona Estratégica", "Knockout": "Nocaute", "Wipeout": "Extermínio", "Showdown": "Combate", "Solo Showdown": "Combate Solo", "Duo Showdown": "Combate Duplo", "bounty": "Caça-Estrelas", "brawlBall": "Fute-Brawl", "gemGrab": "Pique-Gema", "heist": "Roubo", "hotZone": "Zona Estratégica", "knockout": "Nocaute", "wipeout": "Extermínio" };
-    const tradutorMapas = { "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca", "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto", "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada", "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central", "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura", "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes", "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm", "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva", "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central", "Stone Fort": "Forte de Pedra" };
+    const tradutorMapas = { "Shooting Star": "Tiro Aberto", "Snake Prairie": "Pradaria da Serpente", "Hard Rock Mine": "Mina Rochosa", "Crystal Arcade": "Fliperama de Cristal", "Deathcap Trap": "Arapuca", "Undermine": "Mina Subterrânea", "Deep Diner": "Lanchonete Profunda", "Skull Creek": "Arroio Esqueleto", "Scorched Stone": "Pedra Escaldante", "Rockwall Brawl": "Encrenca Encurralada", "Feast Or Famine": "Tudo ou Nada", "Double Swoosh": "Bote Duplo", "Outlaw Camp": "Acampamento Bandido", "Center Stage": "Palco Central", "Flaring Phoenix": "Fênix Flamejante", "Belle's Rock": "Rocha da Belle", "Safe Zone": "Zona Segura", "Hot Potato": "Batata Quente", "Kaboom Canyon": "Cânion Cabum", "Dueling Beetles": "Besouros Duelantes", "Ring of Fire": "Anel de Fogo", "Open Plaza": "Praça Aberta", "Goldarm Gulch": "Ravina Goldarm", "Pinball Dreams": "Sonhos de Pinball", "Out in the Open": "Ao Ar Livre", "New Perspective": "Nova Perspectiva", "Goalkeeper's Dream": "Sonho de Goleiro", "Center Field": "Campo Central", "Stone Fort": "Forte de Pedra", "Canal Grande": "Canal Grande", "Parallel Plays": "Jogadas Paralelas", "Hideout": "Esconderijo" };
+
+    // Tradutor de Engrenagens (Gears)
+    const tradutorGears = {
+      "Speed": "Velocidade (Mato)",
+      "Health": "Saúde (Regeneração)",
+      "Damage": "Dano (+15% Dano)",
+      "Vision": "Visão (Revela no Mato)",
+      "Shield": "Escudo (+900 Vida)",
+      "Reload Speed": "Velocidade de Recarga",
+      "Super Charge": "Carga do Super",
+      "Pet Power": "Força do Pet (+25%)",
+      "Talk To The Hand": "Alcance Mágico (Gene)",
+      "Sticky Spikes": "Espinhos Pegajosos (Crow)",
+      "Enduring Toxins": "Toxinas Fortes (Crow)",
+      "Exhausting Storm": "Tempestade Exaustiva (Sandy)",
+      "Super Turret": "Super Torpede (Pam)",
+      "Quadruplets": "Quadrigémeos (Eve)",
+      "Bat Storm": "Tempestade de Morcegos (Mortis)",
+      "Thicc Head": "Cabeça Dura (Tick)"
+    };
+
+    // Dicionário + Tradutor Inteligente de Acessórios (Gadgets) e Poderes de Estrela (Star Powers)
+    const dicionarioSkills = {
+      // Piper
+      "Auto Aimer": "Mira Automática (Empurrão)", "Homemade Recipe": "Receita Caseira (Curva)",
+      "Ambush": "Emboscada (+Dano no Mato)", "Snappy Sniping": "Atiradora Nato (Recarga)",
+      // Rico
+      "Multiball Launcher": "Lançador de Bolas (Anti-Assassino)", "Bouncy Castle": "Castelo Inflável (Cura)",
+      "Super Bouncy": "Super Rebote (+Dano Tabela)", "Robo Retreat": "Recuo Robótico (Velocidade)",
+      // Angelo
+      "Stinging Flight": "Voo Picante (Salto/Fuga)", "Master Fletcher": "Mestre Flecheiro (Atravessa Parede)",
+      "Empower": "Fortalecer (Cura no Super)", "Flow": "Fluxo (Velocidade na Água)",
+      // Belle
+      "Nest Egg": "Ovo no Ninho (Armadilha Lenta)", "Reverse Polarity": "Polaridade Invertida (Tabela)",
+      "Positive Feedback": "Feedback Positivo (Escudo)", "Grounded": "Sem Recarga",
+      // Sandy
+      "Sleep Stimulator": "Estimulante de Sono (Cura)", "Sweet Dreams": "Bons Sonhos (Atordoa/Stun)",
+      "Rude Sands": "Areia Bruta (Dano/Revela Mato)", "Healing Winds": "Ventos Curativos (Cura Aliados)",
+      // Gene
+      "Lamp Blowout": "Sopro da Lâmpada (Empurrão)", "Vengeful Spirits": "Espíritos Vingativos (Mísseis)",
+      "Magic Puffs": "Sopro Mágico (Cura Aliados)", "Spirit Slap": "Tapa Astral (+Dano no Super)",
+      // Colette
+      "Na-ah!": "Nem Vem! (+Dano Extra)", "Gotcha!": "Peguei! (Roubo de Vida/Cura)",
+      "Push It": "Empurrão (Leva até ao Fim)", "Mass Tax": "Imposto em Massa (Escudo)",
+      // Gale
+      "Spring Ejector": "Ejetor de Mola (Trampolim)", "Twister": "Tornado (Bloqueia Passagem)",
+      "Blustery Blow": "Sopro Furioso (Atordoa na Parede)", "Freezing Snow": "Neve Congelante (Lentidão)",
+      // Tara
+      "Psychic Enhancer": "Amplificador Psíquico (Visão Mato)", "Support From Beyond": "Apoio do Além (Sombras)",
+      "Black Portal": "Portal Negro (Sombra de Ataque)", "Healing Shade": "Sombra Curativa (Cura)",
+      // Bo
+      "Super Totem": "Super Totem (Recarga Super)", "Tripwire": "Fio Detonador (Explode Minas)",
+      "Circling Eagle": "Águia Ciranda (Visão no Mato)", "Snare a Bear": "Urso na Ratoeira (Atordoa/Stun)"
+    };
+
+    function traduzirSkill(engName) {
+      if (!engName) return "Padrão";
+      if (dicionarioSkills[engName]) return dicionarioSkills[engName];
+      // Tradução por palavras-chave caso não esteja no dicionário fixo
+      let t = engName
+        .replace(/Shield/gi, "Escudo")
+        .replace(/Heal|Healing/gi, "Cura")
+        .replace(/Speed|Fast/gi, "Velocidade")
+        .replace(/Damage|Power|Boost/gi, "Dano")
+        .replace(/Reload/gi, "Recarga")
+        .replace(/Slow|Freezing/gi, "Lentidão")
+        .replace(/Jump|Dash|Flight|Escape/gi, "Fuga/Avanço")
+        .replace(/Stun/gi, "Atordoamento");
+      return t === engName ? `${engName}` : `${engName} (${t})`;
+    }
 
     let state = {
       mode: 'ranked', mapId: null, turn: null, enemyPicks: [], myPick: null, 
-      mapTopBrawlers: [], currentWinRates: {}, allBrawlers: [], allMapsList: [],
-      isOfflineFallback: false, favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
+      mapTopBrawlers: [], currentWinRates: {}, currentUseRates: {}, currentMetaScores: {},
+      allBrawlers: [], allMapsList: [], isOfflineFallback: false,
+      favorites: JSON.parse(localStorage.getItem('brawlFavorites')) || []
     };
 
     function getFallbackAvatar(name) { return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=e2e8f0&size=128`; }
     function normalizeStr(str) { return (str || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }
-    function formatMapLabel(mode, mapName) {
-      const m = tradutorModos[mode] || mode || "Evento";
-      const n = tradutorMapas[mapName] || mapName;
-      return `[${m}] ${n}`;
+
+    // Define se o mapa recebe prefixo R- (Ranqueada) ou C- (Casual)
+    function isMapRanked(mapObj) {
+      const mName = normalizeStr(mapObj.name);
+      const modeName = normalizeStr(mapObj.gameMode ? mapObj.gameMode.name : '');
+      if (mapasRanqueadaNomes.has(mName)) return true;
+      if (modosRanqueada.includes(modeName) && !mName.includes("showdown") && !mName.includes("cavernchurn")) return true;
+      return false;
+    }
+
+    function formatMapLabel(mapObj) {
+      const prefix = isMapRanked(mapObj) ? "R-" : "C-";
+      const rawMode = mapObj.gameMode ? mapObj.gameMode.name : "Evento";
+      const m = tradutorModos[rawMode] || rawMode;
+      const n = tradutorMapas[mapObj.name] || mapObj.name;
+      return `${prefix} [${m}] ${n}`;
+    }
+
+    // MOTOR DE BUILD DINÂMICA (Escolhe Acessório, Star Power e 2 Engrenagens consoante Mapa e Adversários)
+    function getDynamicBuild(brawler, selectedMap, enemyNames) {
+      const normMap = selectedMap ? normalizeStr(selectedMap.name) : "";
+      const modeName = selectedMap && selectedMap.gameMode ? normalizeStr(selectedMap.gameMode.name) : "";
+      const dna = mapDNA[normMap] || { terrain: [] };
+      const isBushy = dna.terrain && dna.terrain.includes("bushy");
+      const isOpen = dna.terrain && dna.terrain.includes("open");
+      const isHeist = modeName.includes("heist");
+
+      const enemyInfos = enemyNames.map(n => state.allBrawlers.find(b => b.name === n)).filter(Boolean);
+      const hasAggroEnemy = enemyInfos.some(e => e.className === "Assassin" || e.className === "Tank");
+      const hasTankEnemy = enemyInfos.some(e => e.className === "Tank");
+      const hasSniperEnemy = enemyInfos.some(e => e.className === "Marksman");
+
+      let reasons = [];
+
+      // 1. Escolha do Acessório (Gadget 0 vs Gadget 1)
+      let chosenGadget = brawler.gadgets && brawler.gadgets[0] ? brawler.gadgets[0] : null;
+      if (brawler.gadgets && brawler.gadgets.length > 1) {
+        const g0 = brawler.gadgets[0], g1 = brawler.gadgets[1];
+        const desc0 = normalizeStr((g0.name || "") + " " + (g0.description || ""));
+        const desc1 = normalizeStr((g1.name || "") + " " + (g1.description || ""));
+
+        if (isBushy && (desc0.includes("bush") || desc0.includes("vision") || g0.name === "Psychic Enhancer")) {
+          chosenGadget = g0; reasons.push("Acessório de visão para mato");
+        } else if (isBushy && (desc1.includes("bush") || desc1.includes("vision"))) {
+          chosenGadget = g1; reasons.push("Acessório de visão para mato");
+        } else if (hasAggroEnemy) {
+          // Procura palavras de defesa: knockback, slow, stun, jump, shield, push
+          const defWords = ["knock", "push", "slow", "stun", "jump", "flight", "escape", "twister", "aimer", "blowout", "multiball"];
+          const g1IsDef = defWords.some(w => desc1.includes(w));
+          const g0IsDef = defWords.some(w => desc0.includes(w));
+          if (g1IsDef && !g0IsDef) { chosenGadget = g1; reasons.push("Acessório defensivo contra Assassino/Tank"); }
+          else if (g0IsDef) { chosenGadget = g0; reasons.push("Acessório anti-agressão contra Assassino/Tank"); }
+        } else if (isOpen && hasSniperEnemy) {
+          const rangeWords = ["range", "recipe", "homing", "pierce", "shield"];
+          if (rangeWords.some(w => desc1.includes(w))) { chosenGadget = g1; reasons.push("Acessório de longo alcance/troca contra Snipers"); }
+        }
+      }
+
+      // 2. Escolha do Poder de Estrela (Star Power 0 vs Star Power 1)
+      let chosenSP = brawler.starPowers && brawler.starPowers[0] ? brawler.starPowers[0] : null;
+      if (brawler.starPowers && brawler.starPowers.length > 1) {
+        const sp0 = brawler.starPowers[0], sp1 = brawler.starPowers[1];
+        const desc0 = normalizeStr((sp0.name || "") + " " + (sp0.description || ""));
+        const desc1 = normalizeStr((sp1.name || "") + " " + (sp1.description || ""));
+
+        if (isBushy && (sp0.name === "Circling Eagle" || sp0.name === "Ambush" || sp0.name === "Rude Sands" || sp0.name === "Speedy")) {
+          chosenSP = sp0; reasons.push("Star Power otimizada para relva");
+        } else if (isHeist || hasTankEnemy) {
+          const dmgWords = ["damage", "reload", "snappy", "slap", "superbouncy", "pushit"];
+          if (dmgWords.some(w => desc1.includes(w))) { chosenSP = sp1; reasons.push("Star Power focada em DPS contínuo"); }
+        } else if (hasAggroEnemy && (desc1.includes("slow") || desc1.includes("stun") || desc1.includes("shield") || desc1.includes("heal"))) {
+          chosenSP = sp1; reasons.push("Star Power de controlo/sobrevivência");
+        }
+      }
+
+      // 3. Cálculo das 2 Melhores Engrenagens (Gears) para o Mapa + Brawler + Adversários
+      let availableGears = brawler.gears && brawler.gears.length > 0 ? [...brawler.gears] : [
+        { name: "Damage", imageUrl: "https://cdn.brawlify.com/gears/regular/62000002.png" },
+        { name: "Shield", imageUrl: "https://cdn.brawlify.com/gears/regular/62000004.png" },
+        { name: "Speed", imageUrl: "https://cdn.brawlify.com/gears/regular/62000000.png" },
+        { name: "Health", imageUrl: "https://cdn.brawlify.com/gears/regular/62000001.png" },
+        { name: "Vision", imageUrl: "https://cdn.brawlify.com/gears/regular/62000003.png" }
+      ];
+
+      const scoredGears = availableGears.map(g => {
+        let gScore = 10;
+        const gName = g.name || "";
+
+        // Engrenagem de Dano é essencial quase sempre, especialmente contra Tanks/Aggro
+        if (gName === "Damage") gScore += 35 + (hasTankEnemy ? 15 : 0);
+
+        // Engrenagens de Mapa com Relva (Speed vs Vision)
+        if (isBushy) {
+          if (gName === "Speed" && ["Tank", "Assassin", "Damage Dealer", "Support"].includes(brawler.className)) {
+            gScore += 45;
+          }
+          if (gName === "Vision" && ["Marksman", "Controller", "Artillery"].includes(brawler.className)) {
+            gScore += 48;
+          }
+        }
+
+        // Engrenagem de Escudo vs Saúde
+        if (gName === "Shield" && ["Marksman", "Artillery", "Assassin", "Controller"].includes(brawler.className)) {
+          gScore += 30 + (hasSniperEnemy || hasAggroEnemy ? 12 : 0);
+        }
+        if (gName === "Health" && brawler.className === "Tank") {
+          gScore += 38;
+        }
+
+        // Engrenagens Épicas / Míticas específicas (Recarga, Pet, Super, Míticas)
+        if (gName === "Reload Speed" || gName === "Pet Power" || (g.level && g.level >= 2)) {
+          gScore += 36;
+        }
+
+        return { ...g, gScore, translatedName: tradutorGears[gName] || gName };
+      }).sort((a, b) => b.gScore - a.gScore);
+
+      const bestGears = scoredGears.slice(0, 2);
+      if (isBushy && bestGears.some(g => g.name === "Speed" || g.name === "Vision")) {
+        reasons.push("Engrenagem de Mato ativa para este mapa");
+      } else if (hasTankEnemy) {
+        reasons.push("Foco em Dano para derreter Tanks inimigos");
+      } else if (hasSniperEnemy) {
+        reasons.push("Escudo ativo para vencer trocas de tiro");
+      }
+
+      return {
+        gadget: chosenGadget ? { ...chosenGadget, ptName: traduzirSkill(chosenGadget.name) } : null,
+        starPower: chosenSP ? { ...chosenSP, ptName: traduzirSkill(chosenSP.name) } : null,
+        gears: bestGears,
+        reasonText: reasons.length > 0 ? `💡 Tática: ${reasons.join(" + ")}.` : `💡 Build padrão competitiva para ${brawler.className}.`
+      };
     }
 
     async function initAPI() {
       const statusDetalhe = document.getElementById('status-detalhe');
       try {
-        // 1. Catálogo estático de Brawlers (fotos, classes, builds e IDs)
         const brawlersRes = await fetch('https://api.brawlapi.com/v1/brawlers', { cache: 'no-store' });
         const brawlersData = await brawlersRes.json();
         
@@ -171,8 +431,8 @@
             name: b.name,
             image: b.imageUrl2 || b.imageUrl,
             className: b.class ? b.class.name : 'Damage Dealer',
-            gadget: b.gadgets && b.gadgets.length > 0 ? b.gadgets[0] : null,
-            starPower: b.starPowers && b.starPowers.length > 0 ? b.starPowers[0] : null,
+            gadgets: b.gadgets || [],
+            starPowers: b.starPowers || [],
             gears: b.gears || []
           })).sort((a, b) => a.name.localeCompare(b.name));
         }
@@ -180,7 +440,6 @@
         renderEnemyGrid();
         renderFavoritesList();
 
-        // 2. Catálogo estático de Mapas (imagens e nomes)
         try {
           const mapsRes = await fetch('https://api.brawlapi.com/v1/maps', { cache: 'no-store' });
           const mapsData = await mapsRes.json();
@@ -189,7 +448,6 @@
           state.allMapsList = [];
         }
 
-        // 3. Rotação Oficial ao vivo no seu Render
         const rotRes = await fetch(`${MEU_SERVIDOR_RENDER}/api/rotacao`, { cache: 'no-store' });
         const rotData = await rotRes.json();
 
@@ -221,38 +479,48 @@
           });
         }
 
-        const mapSelect = document.getElementById('map-select');
-        mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
-
-        const activeMaps = state.allMapsList.filter(m => activeMapIds.has(Number(m.id)) || activeMapNames.has(normalizeStr(m.name)));
-        if (activeMaps.length > 0) {
-          mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora (Oficial Supercell)">`;
-          activeMaps.forEach(m => {
-            const modeName = m.gameMode ? m.gameMode.name : 'Live';
-            mapSelect.innerHTML += `<option value="${m.id}">${formatMapLabel(modeName, m.name)}</option>`;
-          });
-          mapSelect.innerHTML += `</optgroup>`;
-        }
-
-        const otherMaps = state.allMapsList.filter(m => !activeMapIds.has(Number(m.id)) && !activeMapNames.has(normalizeStr(m.name)));
-        if (otherMaps.length > 0) {
-          mapSelect.innerHTML += `<optgroup label="⚪ Todos os Mapas">`;
-          otherMaps.forEach(m => {
-            const modeName = m.gameMode ? m.gameMode.name : 'Mapa';
-            mapSelect.innerHTML += `<option value="${m.id}">${formatMapLabel(modeName, m.name)}</option>`;
-          });
-          mapSelect.innerHTML += `</optgroup>`;
-        }
+        populateMapSelect(activeMapIds, activeMapNames);
 
         document.getElementById('api-status').innerText = '🟢 Servidor Próprio Online';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-green-600');
         document.getElementById('api-status').classList.remove('animate-pulse');
-        statusDetalhe.innerText = `✅ ${activeMaps.length} mapas ao vivo sincronizados com a Supercell.`;
+        statusDetalhe.innerText = `✅ Rotação oficial carregada com prefixos R- (Ranqueada) e C- (Casual).`;
       } catch (e) {
         document.getElementById('api-status').innerText = '🔴 Erro de Conexão';
         document.getElementById('api-status').classList.replace('bg-yellow-600', 'bg-red-600');
         statusDetalhe.innerText = `❌ Falha ao iniciar: ${e.message}`;
       }
+    }
+
+    function populateMapSelect(activeMapIds, activeMapNames) {
+      const mapSelect = document.getElementById('map-select');
+      const currentVal = mapSelect.value;
+      mapSelect.innerHTML = '<option value="">Selecione o mapa...</option>';
+
+      const activeMaps = state.allMapsList.filter(m => activeMapIds.has(Number(m.id)) || activeMapNames.has(normalizeStr(m.name)));
+      // Ordena colocando R- primeiro quando estiver no modo Ranqueada
+      activeMaps.sort((a, b) => (isMapRanked(b) ? 1 : 0) - (isMapRanked(a) ? 1 : 0));
+
+      if (activeMaps.length > 0) {
+        mapSelect.innerHTML += `<optgroup label="🟢 Ao Vivo Agora (Oficial Supercell)">`;
+        activeMaps.forEach(m => {
+          mapSelect.innerHTML += `<option value="${m.id}">${formatMapLabel(m)}</option>`;
+        });
+        mapSelect.innerHTML += `</optgroup>`;
+      }
+
+      const otherMaps = state.allMapsList.filter(m => !activeMapIds.has(Number(m.id)) && !activeMapNames.has(normalizeStr(m.name)));
+      otherMaps.sort((a, b) => (isMapRanked(b) ? 1 : 0) - (isMapRanked(a) ? 1 : 0));
+
+      if (otherMaps.length > 0) {
+        mapSelect.innerHTML += `<optgroup label="⚪ Todos os Mapas (R- Competitivos / C- Casuais)">`;
+        otherMaps.forEach(m => {
+          mapSelect.innerHTML += `<option value="${m.id}">${formatMapLabel(m)}</option>`;
+        });
+        mapSelect.innerHTML += `</optgroup>`;
+      }
+
+      if (currentVal) mapSelect.value = currentVal;
     }
 
     async function fetchMapStats() {
@@ -283,46 +551,79 @@
       } catch (e) {}
 
       state.currentWinRates = {};
+      state.currentUseRates = {};
+      state.currentMetaScores = {};
       state.isOfflineFallback = false;
 
       const validStats = [];
+      let totalSampleGames = 0;
+
       if (data && Array.isArray(data.stats) && data.stats.length > 0) {
+        data.stats.forEach(s => {
+          totalSampleGames += Number(s.useRate || 1);
+        });
+
         data.stats.forEach(s => {
           const bId = typeof s.brawler === 'object' ? Number(s.brawler.id) : Number(s.brawler);
           const bInfo = state.allBrawlers.find(b => b.id === bId);
 
           if (bInfo && s.winRate !== undefined) {
-            const wr = Math.round(Number(s.winRate) * 10) / 10;
-            state.currentWinRates[bInfo.name] = wr;
-            validStats.push({ brawlerName: bInfo.name, winRate: wr, useRate: Number(s.useRate || 0) });
+            const rawWr = Number(s.winRate);
+            const games = Number(s.useRate || 0);
+            const usePct = totalSampleGames > 0 ? Math.round((games / totalSampleGames) * 1000) / 10 : 1.0;
+
+            // FÓRMULA ESTILO BRAWLIFY (Média Bayesiana + Peso de Uso):
+            // Se o brawler tiver poucas partidas (games baixo), a nota é puxada para 50% para evitar falsos 100% WR.
+            // Se tiver muitas partidas e WR alto, ganha bónus de consistência (Meta Pick).
+            const k = 10; // Constante de confiança mínima
+            const bayesianWr = ((games * rawWr) + (k * 50)) / (games + k);
+            const popularityBonus = Math.min(7.5, Math.log2(1 + games) * 1.6);
+            const metaScore = Math.round((bayesianWr + popularityBonus) * 10) / 10;
+
+            state.currentWinRates[bInfo.name] = Math.round(rawWr * 10) / 10;
+            state.currentUseRates[bInfo.name] = usePct;
+            state.currentMetaScores[bInfo.name] = metaScore;
+
+            validStats.push({
+              brawlerName: bInfo.name,
+              winRate: state.currentWinRates[bInfo.name],
+              useRate: usePct,
+              gamesCount: games,
+              metaScore: metaScore
+            });
           }
         });
       }
 
       if (validStats.length > 0) {
         document.getElementById('fallback-badge').classList.add('hidden');
-        // Se algum brawler novo ainda não apareceu nos logs do Top Global, entra com base 50%
         state.allBrawlers.forEach(b => {
           if (state.currentWinRates[b.name] === undefined) {
-            state.currentWinRates[b.name] = 50;
-            validStats.push({ brawlerName: b.name, winRate: 50, useRate: 0 });
+            state.currentWinRates[b.name] = 48.0;
+            state.currentUseRates[b.name] = 0.1;
+            state.currentMetaScores[b.name] = 48.0;
+            validStats.push({ brawlerName: b.name, winRate: 48.0, useRate: 0.1, gamesCount: 0, metaScore: 48.0 });
           }
         });
-        state.mapTopBrawlers = validStats.sort((a, b) => b.winRate - a.winRate);
-        statusDetalhe.innerText = `✅ Win Rates Oficiais carregados (${validStats.length} brawlers via Supercell API).`;
+        state.mapTopBrawlers = validStats.sort((a, b) => b.metaScore - a.metaScore);
+        statusDetalhe.innerText = `✅ Meta Score calculado (Win Rate ponderado pelo Uso estilo Brawlify).`;
         statusDetalhe.className = 'text-[10px] text-green-400 mt-1';
       } else {
         state.isOfflineFallback = true;
         document.getElementById('fallback-badge').classList.remove('hidden');
-        state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawlerName: b.name, winRate: 50, useRate: 0 }));
-        statusDetalhe.innerText = `⚠️ Aguardando atualização do servidor no Render. Modo Tático ativo.`;
+        state.mapTopBrawlers = state.allBrawlers.map(b => ({ brawlerName: b.name, winRate: 50, useRate: 1.0, gamesCount: 0, metaScore: 50 }));
+        statusDetalhe.innerText = `⚠️ Sem amostra suficiente. Calculando via DNA Tático do Mapa.`;
         statusDetalhe.className = 'text-[10px] text-purple-300 mt-1';
       }
       
       document.getElementById('map-loading').classList.add('hidden');
       renderEnemyGrid();
       renderFavoritesList();
-      if(state.myPick) renderTargetAnalysis(); else updateRecommendations();
+      if(state.myPick) {
+        selectMyPick(state.myPick); // Atualiza a build para o novo mapa
+      } else {
+        updateRecommendations();
+      }
     }
 
     function setMode(mode) {
@@ -347,8 +648,8 @@
       const grid = document.getElementById('enemy-grid'); grid.innerHTML = '';
       let filtered = state.allBrawlers.filter(b => b.name.toLowerCase().includes(filter.toLowerCase()) && !state.enemyPicks.includes(b.name));
       filtered.sort((a, b) => {
-        const wrA = state.currentWinRates[a.name] || 0, wrB = state.currentWinRates[b.name] || 0;
-        return wrB !== wrA ? wrB - wrA : a.name.localeCompare(b.name);
+        const msA = state.currentMetaScores[a.name] || 0, msB = state.currentMetaScores[b.name] || 0;
+        return msB !== msA ? msB - msA : a.name.localeCompare(b.name);
       });
       filtered.forEach(b => {
         const wr = state.currentWinRates[b.name] ? `<div class="absolute top-0.5 right-0.5 bg-slate-900/80 text-gray-300 text-[8px] px-1 rounded pointer-events-none">${state.currentWinRates[b.name]}%</div>` : '';
@@ -361,13 +662,13 @@
       state.enemyPicks.push(name);
       document.getElementById('enemy-search').value = '';
       renderSelectedEnemies(); renderEnemyGrid(); 
-      if(state.myPick) renderTargetAnalysis(); else updateRecommendations();
+      if(state.myPick) selectMyPick(state.myPick); else updateRecommendations();
     }
 
     function removeEnemy(name) {
       state.enemyPicks = state.enemyPicks.filter(e => e !== name);
       renderSelectedEnemies(); renderEnemyGrid(); 
-      if(state.myPick) renderTargetAnalysis(); else updateRecommendations();
+      if(state.myPick) selectMyPick(state.myPick); else updateRecommendations();
     }
 
     function renderSelectedEnemies() {
@@ -385,27 +686,43 @@
       document.getElementById('suggestions-area').classList.add('hidden');
       document.getElementById('my-locked-pick').classList.remove('hidden');
       const bInfo = state.allBrawlers.find(b => b.name === name);
+      const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
+
       document.getElementById('locked-name').innerText = name;
       document.getElementById('locked-img').src = bInfo.image;
       
-      if(bInfo.gadget) {
-        document.getElementById('locked-gadget-img').src = bInfo.gadget.imageUrl;
-        document.getElementById('locked-gadget-name').innerText = bInfo.gadget.name;
+      // Calcula Build Dinâmica Traduzida (Mapa + Inimigos)
+      const dynamicBuild = getDynamicBuild(bInfo, selectedMap, state.enemyPicks);
+
+      if(dynamicBuild.gadget) {
+        document.getElementById('locked-gadget-img').src = dynamicBuild.gadget.imageUrl;
+        document.getElementById('locked-gadget-name').innerText = dynamicBuild.gadget.ptName;
       }
-      if(bInfo.starPower) {
-        document.getElementById('locked-sp-img').src = bInfo.starPower.imageUrl;
-        document.getElementById('locked-sp-name').innerText = bInfo.starPower.name;
+      if(dynamicBuild.starPower) {
+        document.getElementById('locked-sp-img').src = dynamicBuild.starPower.imageUrl;
+        document.getElementById('locked-sp-name').innerText = dynamicBuild.starPower.ptName;
       }
 
-      const gear1 = document.getElementById('locked-gear1-img'); const gear2 = document.getElementById('locked-gear2-img');
-      gear1.classList.add('hidden'); gear2.classList.add('hidden');
-      if (bInfo.gears && bInfo.gears.length >= 2) {
-        let sortedGears = [...bInfo.gears].sort((a, b) => {
-          if(a.level !== b.level) return b.level - a.level; return a.name.localeCompare(b.name);
-        });
-        gear1.src = sortedGears[0].imageUrl; gear1.classList.remove('hidden');
-        gear2.src = sortedGears[1].imageUrl; gear2.classList.remove('hidden');
+      const gear1Img = document.getElementById('locked-gear1-img');
+      const gear2Img = document.getElementById('locked-gear2-img');
+      const gear1Name = document.getElementById('locked-gear1-name');
+      const gear2Name = document.getElementById('locked-gear2-name');
+
+      gear1Img.classList.add('hidden'); gear2Img.classList.add('hidden');
+      gear1Name.innerText = ''; gear2Name.innerText = '';
+
+      if (dynamicBuild.gears.length >= 1) {
+        gear1Img.src = dynamicBuild.gears[0].imageUrl;
+        gear1Img.classList.remove('hidden');
+        gear1Name.innerText = dynamicBuild.gears[0].translatedName;
       }
+      if (dynamicBuild.gears.length >= 2) {
+        gear2Img.src = dynamicBuild.gears[1].imageUrl;
+        gear2Img.classList.remove('hidden');
+        gear2Name.innerText = dynamicBuild.gears[1].translatedName;
+      }
+
+      document.getElementById('locked-build-reason').innerText = dynamicBuild.reasonText;
       renderTargetAnalysis();
     }
 
@@ -420,16 +737,20 @@
       if(!state.myPick) return;
       const tContainer = document.getElementById('locked-targets'); tContainer.innerHTML = '';
       if(state.enemyPicks.length === 0) {
-        tContainer.innerHTML = '<p class="text-[10px] text-gray-400 mt-2">Adicione inimigos no passo 3 para ver em quem focar.</p>'; return;
+        tContainer.innerHTML = '<p class="text-[10px] text-gray-400 mt-2">Adicione inimigos no passo 3 para recalcular a Build e ver seus alvos.</p>'; return;
       }
       const myInfo = state.allBrawlers.find(b => b.name === state.myPick);
       state.enemyPicks.forEach(enemyName => {
         const eInfo = state.allBrawlers.find(b => b.name === enemyName);
+        if (!eInfo) return;
         let statusHtml = '';
-        if (classAdvantages[myInfo.className] && classAdvantages[myInfo.className].includes(eInfo.className)) {
-          statusHtml = `<span class="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold ml-auto">🎯 Alvo Ideal</span>`;
-        } else if (classAdvantages[eInfo.className] && classAdvantages[eInfo.className].includes(myInfo.className)) {
-          statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ Evite</span>`;
+        const isHardCounter = hardCounters[myInfo.name] && hardCounters[myInfo.name].includes(eInfo.name);
+        const enemyHardCountersMe = hardCounters[eInfo.name] && hardCounters[eInfo.name].includes(myInfo.name);
+
+        if (isHardCounter || (classAdvantages[myInfo.className] && classAdvantages[myInfo.className].includes(eInfo.className))) {
+          statusHtml = `<span class="bg-green-900 text-green-300 text-[10px] px-2 py-0.5 rounded border border-green-700 font-bold ml-auto">🎯 ${isHardCounter ? 'Hard Counter' : 'Alvo Ideal'}</span>`;
+        } else if (enemyHardCountersMe || (classAdvantages[eInfo.className] && classAdvantages[eInfo.className].includes(myInfo.className))) {
+          statusHtml = `<span class="bg-red-900 text-red-300 text-[10px] px-2 py-0.5 rounded border border-red-700 font-bold ml-auto">⚠️ ${enemyHardCountersMe ? 'Perigo Mortal' : 'Evite (Counter)'}</span>`;
         } else {
           statusHtml = `<span class="text-gray-500 text-[10px] font-bold ml-auto">Neutro</span>`;
         }
@@ -437,76 +758,136 @@
       });
     }
 
+    // MOTOR MATEMÁTICO DE INDICAÇÃO PRO
     function updateRecommendations() {
       const resDiv = document.getElementById('results'); resDiv.innerHTML = '';
       if (!state.mapId) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o mapa acima.</p>'; return; }
-      if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno.</p>'; return; }
+      if (state.mode === 'ranked' && !state.turn) { resDiv.innerHTML = '<p class="text-xs text-gray-400">Selecione o seu turno (1º Pick, Meio ou Último).</p>'; return; }
 
       const selectedMap = state.allMapsList.find(m => m.id == state.mapId);
       const normalizedMapName = selectedMap ? normalizeStr(selectedMap.name) : "";
+      const modeName = selectedMap && selectedMap.gameMode ? normalizeStr(selectedMap.gameMode.name) : "";
       const dna = mapDNA[normalizedMapName];
 
       let candidatos = state.mapTopBrawlers.map(apiB => {
         let bInfo = state.allBrawlers.find(b => b.name === apiB.brawlerName);
-        let scoreFinal = apiB.winRate; 
+        if (!bInfo) return null;
+
+        // 1. Base: Meta Score (que já pondera Win Rate + Taxa de Uso como o Brawlify)
+        let scoreFinal = apiB.metaScore || apiB.winRate || 50;
         let tagsAtivas = [];
 
-        if (bInfo && dna) {
-          if (dna.boost.includes(bInfo.className)) { scoreFinal += state.isOfflineFallback ? 20 : 2; tagsAtivas.push('👍 Terreno'); }
-          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += state.isOfflineFallback ? 30 : 4; tagsAtivas.push('👑 Meta Mapa'); }
-          if (dna.punish.includes(bInfo.className)) { scoreFinal -= state.isOfflineFallback ? 40 : 5; tagsAtivas.push('❌ Ruim aqui'); }
+        if (apiB.useRate >= 3.0 && !state.isOfflineFallback) {
+          tagsAtivas.push(`📊 Alto Uso (${apiB.useRate}%)`);
+        } else if (apiB.gamesCount === 0 && !state.isOfflineFallback) {
+          scoreFinal -= 6; // Penaliza brawlers sem amostragem real naquele mapa
         }
 
+        // 2. Peso do Terreno do Mapa e Modo de Jogo
+        if (dna) {
+          if (dna.boost.includes(bInfo.className)) { scoreFinal += 5; tagsAtivas.push('👍 Terreno Ideal'); }
+          if (dna.specificBoost && dna.specificBoost.includes(bInfo.name)) { scoreFinal += 9; tagsAtivas.push('👑 Rei do Mapa'); }
+          if (dna.punish.includes(bInfo.className)) { scoreFinal -= 12; tagsAtivas.push('❌ Ruim no Mapa'); }
+        } else {
+          if ((modeName.includes('bounty') || modeName.includes('knockout')) && bInfo.className === 'Marksman') {
+            scoreFinal += 5; tagsAtivas.push('🎯 Meta do Modo');
+          } else if (modeName.includes('heist') && (bInfo.className === 'Damage Dealer' || bInfo.className === 'Artillery')) {
+            scoreFinal += 5; tagsAtivas.push('💥 Dano ao Cofre');
+          }
+        }
+
+        // 3. Lógica Profissional de Turno + Escolhas Adversárias
+        if (state.mode === 'ranked') {
+          if (state.turn === 'first') {
+            // No 1º Pick: Valoriza brawlers seguros (Marksman, Controller, Support) e pune brawlers facilmente anuláveis (Tanks/Assassinos)
+            if (["Controller", "Marksman"].includes(bInfo.className) && (!dna || !dna.punish.includes(bInfo.className))) {
+              scoreFinal += 4.5;
+              tagsAtivas.push('🛡️ 1º Pick Seguro');
+            }
+            if (["Tank", "Assassin"].includes(bInfo.className) && (!dna || !dna.specificBoost.includes(bInfo.name))) {
+              scoreFinal -= 7;
+              tagsAtivas.push('⚠️ Arriscado no 1º Pick');
+            }
+          }
+
+          if ((state.turn === 'mid' || state.turn === 'last') && state.enemyPicks.length > 0) {
+            const multTurno = state.turn === 'last' ? 1.8 : 1.0; // Último pick dobra o peso de Counter!
+            let countersCount = 0;
+            let counteredByCount = 0;
+
+            state.enemyPicks.forEach(enemyName => {
+              const enemyObj = state.allBrawlers.find(e => e.name === enemyName);
+              if (!enemyObj) return;
+
+              const isHard = hardCounters[bInfo.name] && hardCounters[bInfo.name].includes(enemyObj.name);
+              const enemyHard = hardCounters[enemyObj.name] && hardCounters[enemyObj.name].includes(bInfo.name);
+
+              if (isHard) {
+                scoreFinal += 9 * multTurno;
+                countersCount += 2;
+              } else if (classAdvantages[bInfo.className] && classAdvantages[bInfo.className].includes(enemyObj.className)) {
+                scoreFinal += 4.5 * multTurno;
+                countersCount += 1;
+              }
+
+              if (enemyHard) {
+                scoreFinal -= 12 * multTurno;
+                counteredByCount += 2;
+              } else if (classAdvantages[enemyObj.className] && classAdvantages[enemyObj.className].includes(bInfo.className)) {
+                scoreFinal -= 6.5 * multTurno;
+                counteredByCount += 1;
+              }
+            });
+
+            if (countersCount >= 2) tagsAtivas.push('🔥 Hard Counter');
+            else if (countersCount === 1) tagsAtivas.push('🎯 Countera Inimigo');
+
+            if (counteredByCount > 0) tagsAtivas.push('⛔ Sofre Counter');
+          }
+        }
+
+        // Bónus leve para os seus Brawlers Favoritos (dominados por si) sem distorcer escolhas ruins
+        const isFav = state.favorites.includes(bInfo.name);
+        if (isFav) scoreFinal += 3.5;
+
         return { 
-          name: apiB.brawlerName, image: bInfo ? bInfo.image : '', className: bInfo ? bInfo.className : '', 
-          isFav: state.favorites.includes(apiB.brawlerName), score: Math.round(scoreFinal * 10) / 10, baseWr: apiB.winRate, tags: tagsAtivas
+          name: bInfo.name, image: bInfo.image, className: bInfo.className, 
+          isFav: isFav, score: Math.round(scoreFinal * 10) / 10,
+          baseWr: apiB.winRate, useRate: apiB.useRate || 0, tags: tagsAtivas
         };
-      });
+      }).filter(Boolean);
 
       if (state.mode === 'ranked') {
         candidatos = candidatos.filter(b => !state.enemyPicks.includes(b.name));
-        if (state.turn === 'mid' || state.turn === 'last') {
-          candidatos.forEach(c => {
-            state.enemyPicks.forEach(enemyName => {
-              const enemyClass = state.allBrawlers.find(e => e.name === enemyName)?.className;
-              if (classAdvantages[c.className] && classAdvantages[c.className].includes(enemyClass)) {
-                c.score += state.isOfflineFallback ? 15 : 3; 
-                if (!c.tags.includes('🎯 Countera')) c.tags.push('🎯 Countera');
-              }
-              if (classAdvantages[enemyClass] && classAdvantages[enemyClass].includes(c.className)) {
-                c.score -= state.isOfflineFallback ? 20 : 6; 
-                if (!c.tags.includes('⚠️ Apanha')) c.tags.push('⚠️ Apanha');
-              }
-            });
-            c.score = Math.round(c.score * 10) / 10;
-          });
-        }
       }
 
-      candidatos.sort((a, b) => (b.isFav === a.isFav) ? (b.score - a.score) : (b.isFav ? 1 : -1));
-      const best = candidatos.slice(0, 5);
+      // Ordena diretamente pela Nota Pro Calculada
+      candidatos.sort((a, b) => b.score - a.score);
+      const best = candidatos.slice(0, 6);
       
       best.forEach(b => {
-        const starHtml = b.isFav ? `<div class="absolute -top-2 -left-2 text-xl drop-shadow-md z-20">⭐</div>` : '';
-        const scoreVisor = state.isOfflineFallback 
-          ? `<span class="text-[10px] bg-purple-900/80 text-purple-200 px-1.5 py-0.5 rounded border border-purple-700/50 font-bold whitespace-nowrap">Nota: ${b.score}</span>`
-          : `<span class="text-[10px] bg-green-900/80 text-green-200 px-1.5 py-0.5 rounded border border-green-700/50 font-bold whitespace-nowrap">WR: ${b.baseWr}%</span>`;
+        const starHtml = b.isFav ? `<div class="absolute -top-2 -left-2 text-lg drop-shadow-md z-20">⭐</div>` : '';
+        const statsSub = state.isOfflineFallback
+          ? `<span class="text-[9px] text-gray-400">${b.className}</span>`
+          : `<span class="text-[9px] text-gray-300">${b.className} • <strong class="text-green-400">WR: ${b.baseWr}%</strong> • <strong class="text-blue-300">Uso: ${b.useRate}%</strong></span>`;
 
         let htmlTags = '';
         if (b.tags.length > 0) {
-           htmlTags = `<div class="flex gap-1 mt-1">` + b.tags.map(t => `<span class="text-[8px] bg-slate-800 text-gray-400 px-1 rounded border border-slate-700">${t}</span>`).join('') + `</div>`;
+          htmlTags = `<div class="flex flex-wrap gap-1 mt-1">` + b.tags.map(t => `<span class="text-[8px] bg-slate-800 text-gray-300 px-1.5 py-0.5 rounded border border-slate-700">${t}</span>`).join('') + `</div>`;
         }
 
         resDiv.innerHTML += `
-          <div onclick="selectMyPick('${b.name}')" class="cursor-pointer glass p-2 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex items-center gap-3 hover:bg-slate-700 transition relative">
+          <div onclick="selectMyPick('${b.name}')" class="cursor-pointer glass p-2.5 rounded-lg border-l-4 ${b.isFav ? 'border-yellow-400 bg-yellow-900/10' : 'border-green-500'} flex items-center gap-3 hover:bg-slate-700 transition relative">
             ${starHtml}
-            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-10 h-10 rounded border border-slate-600 bg-slate-900 shadow-lg">
-            <div class="flex-1">
-              <span class="font-bold text-base text-white block">${b.name}</span>
-              <span class="text-[9px] text-gray-400">${b.className}</span>
+            <img src="${b.image}" onerror="this.src='${getFallbackAvatar(b.name)}'" class="w-11 h-11 rounded border border-slate-600 bg-slate-900 shadow-lg shrink-0">
+            <div class="flex-1 min-w-0">
+              <span class="font-bold text-sm text-white block truncate">${b.name}</span>
+              ${statsSub}
               ${htmlTags}
             </div>
-            ${scoreVisor}
+            <div class="text-right shrink-0">
+              <span class="text-[11px] bg-green-900/90 text-green-200 px-2 py-1 rounded border border-green-600 font-bold block">Nota: ${b.score}</span>
+            </div>
           </div>
         `;
       });
@@ -519,7 +900,7 @@
       filtered.sort((a, b) => {
         const aFav = state.favorites.includes(a.name), bFav = state.favorites.includes(b.name);
         if (aFav && !bFav) return -1; if (!aFav && bFav) return 1;
-        const wrA = state.currentWinRates[a.name] || 0, wrB = state.currentWinRates[b.name] || 0;
+        const wrA = state.currentMetaScores[a.name] || 0, wrB = state.currentMetaScores[b.name] || 0;
         return wrB !== wrA ? wrB - wrA : a.name.localeCompare(b.name);
       });
       filtered.forEach(b => {
